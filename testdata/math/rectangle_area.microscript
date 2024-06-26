@@ -1,0 +1,12 @@
+// Compute the area of a rectangle
+function rectangle_area(length, width) {
+    return length * width;
+}
+
+// Main function
+function main() {
+    console.write(rectangle_area(5, 3));
+}
+
+// Call the main function
+main();

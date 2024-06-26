@@ -1,0 +1,10 @@
+// "Hello, World!" program using MicroScript
+// Copyright (c) 2024 Cyril John Magayaga
+
+// Main function
+function main() {
+    console.write("Hello, World!");
+    console.write(4 * 4);
+}
+
+main();

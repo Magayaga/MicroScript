@@ -1,0 +1,18 @@
+// Square function using MicroScript
+// Copyright (c) 2024 Cyril John Magayaga
+
+// Function to compute the square
+function square(number) {
+    return number * number;
+}
+
+// Main function
+function main() {
+    console.write("Hello, Everyone!");
+    console.write(square(14));
+}
+
+// Console
+console.write("Hello, World!");
+
+main();
