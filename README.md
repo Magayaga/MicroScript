@@ -33,3 +33,7 @@ function square(number) {
     return number * number;
 }
 ```
+
+## Copyright
+
+Copyright (c) 2024 Cyril John Magayaga.
