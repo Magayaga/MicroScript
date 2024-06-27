@@ -23,6 +23,8 @@ function main() {
     console.write("Hello, World!");
     return 0;
 };
+
+main();
 ```
 
 The following shows how a **square** function is written in MicroScript programming language:
@@ -32,6 +34,13 @@ The following shows how a **square** function is written in MicroScript programm
 function square(number) {
     return number * number;
 }
+
+// Main function
+function main() {
+    console.write(square(14));
+};
+
+main();
 ```
 
 ## Copyright
