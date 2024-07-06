@@ -13,6 +13,24 @@ The following shows how a "Hello, World!" program is written in MicroScript prog
 console.write("Hello, World!");
 ```
 
+### Arithmetic expressions
+
+The following shows how to the addition, substraction, multiplication, and division program using MicroScript programming language:
+
+```js
+// Adding numbers
+console.write(25 + 19);
+
+// Subtracting numbers
+console.write(36 - 14);
+
+// Multiplying numbers
+console.write(45 * 12);
+
+// Dividing numbers
+console.write(1028 / 16);
+```
+
 ### Function
 
 The following shows how a **"Hello, World!"** program with function is written in MicroScript programming language:
