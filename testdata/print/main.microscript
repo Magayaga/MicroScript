@@ -4,7 +4,6 @@
 // Main function
 function main() {
     console.write("Hello, World!");
-    console.write(4 * 4);
 }
 
 main();
