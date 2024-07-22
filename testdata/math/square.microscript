@@ -8,7 +8,6 @@ function square(number) {
 
 // Main function
 function main() {
-    console.write("Hello, Everyone!");
     console.write(square(14));
 }
 
