@@ -66,19 +66,27 @@ public class ExpressionEvaluator {
         if (eat('(')) { // parentheses
             x = parseExpression();
             eat(')');
-        } else if ((ch >= '0' && ch <= '9') || ch == '.') { // numbers
+        }
+        
+        else if ((ch >= '0' && ch <= '9') || ch == '.') { // numbers
             while ((ch >= '0' && ch <= '9') || ch == '.') nextChar();
             x = Double.parseDouble(expression.substring(startPos, this.pos));
-        } else if (ch >= 'a' && ch <= 'z') { // functions or variables
+        }
+        
+        else if (ch >= 'a' && ch <= 'z') { // functions or variables
             while (ch >= 'a' && ch <= 'z') nextChar();
             String func = expression.substring(startPos, this.pos);
             if (eat('(')) {
                 x = parseExpression();
                 eat(')');
-            } else {
+            }
+            
+            else {
                 x = environment.getVariable(func) != null ? (double) environment.getVariable(func) : 0;
             }
-        } else {
+        }
+        
+        else {
             throw new RuntimeException("Unexpected: " + (char) ch);
         }
 

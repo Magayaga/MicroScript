@@ -40,7 +40,9 @@ public class Parser {
                 }
                 parseFunction(i, closingBraceIndex);
                 i = closingBraceIndex + 1;
-            } else {
+            }
+            
+            else {
                 // Execute top-level commands
                 parseLine(line);
                 i++;
@@ -100,7 +102,9 @@ public class Parser {
             Executor executor = new Executor(environment);
             if (args.isEmpty()) {
                 executor.executeFunction(functionName, new String[0]);
-            } else {
+            }
+            
+            else {
                 executor.executeFunction(functionName, args.split("\\s*,\\s*"));
             }
             return;

@@ -23,7 +23,9 @@ public class MicroScript {
             List<String> lines = Files.readAllLines(Paths.get(filePath));
             Parser parser = new Parser(lines);
             parser.parse();
-        } catch (IOException e) {
+        }
+        
+        catch (IOException e) {
             System.out.println("Error reading file: " + e.getMessage());
         }
     }

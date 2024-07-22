@@ -28,11 +28,15 @@ public class Executor {
                     Object result = evaluate(innerExpression);
                     System.out.println(result);
                 }
-            } else {
+            }
+            
+            else {
                 // Evaluate as a general expression (for variable assignments, etc.)
                 evaluate(expression);
             }
-        } catch (Exception e) {
+        }
+        
+        catch (Exception e) {
             System.out.println("Evaluation error: " + e.getMessage());
         }
     }
@@ -57,12 +61,12 @@ public class Executor {
             localEnv.setVariable(parameters.get(i), value);
         }
 
-        Object returnValue = null; // Default return value if no return statement
+        Object returnValue = null;
         for (String line : function.getBody()) {
             if (line.trim().startsWith("return")) {
                 String returnExpression = line.substring(line.indexOf("return") + 6, line.indexOf(";")).trim();
-                returnValue = evaluate(returnExpression);
-                break;
+                returnValue = new Executor(localEnv).evaluate(returnExpression);
+                return returnValue; // Exit the function immediately after return
             }
             new Executor(localEnv).execute(line);
         }
