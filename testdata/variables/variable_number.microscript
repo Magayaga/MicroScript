@@ -1,0 +1,9 @@
+// Numbers with variable using MicroScript
+// Copyright (c) 2024 Cyril John Magayaga
+
+function main() {
+    var tau = 3.14159 * 2
+    console.write(tau);
+}
+
+main();

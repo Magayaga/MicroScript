@@ -3,6 +3,7 @@
 
 // Main function
 function main() {
+    // "var" keyword means variable
     var s = "Hello, World!"
     console.write(s);
 }

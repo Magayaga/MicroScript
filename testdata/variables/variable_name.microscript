@@ -1,0 +1,9 @@
+// Name with variable using MicroScript
+// Copyright (c) 2024 Cyril John Magayaga
+
+function main() {
+    var name = "Albert Einstein"
+    console.write(name);
+}
+
+main();

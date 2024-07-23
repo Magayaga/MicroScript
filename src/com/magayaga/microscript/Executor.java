@@ -19,6 +19,11 @@ public class Executor {
 
     public void execute(String expression) {
         try {
+            // Skip comments
+            if (expression.startsWith("//")) {
+                return;
+            }
+
             if (expression.startsWith("console.write")) {
                 // Extract the content inside console.write()
                 Pattern pattern = Pattern.compile("console.write\\((.*)\\);");

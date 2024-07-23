@@ -1,4 +1,6 @@
-// Compute the area of a rectangle
+// Compute the area of a rectangle using MicroScript
+// Copyright (c) 2024 Cyril John Magayaga
+
 function rectangle_area(length, width) {
     return length * width;
 }
