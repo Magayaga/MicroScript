@@ -29,6 +29,22 @@ public class Executor {
                     System.out.println(result);
                 }
             }
+
+            else if (expression.startsWith("var ")) {
+                // Handle variable declaration
+                String declaration = expression.substring(4).trim();
+                int equalsIndex = declaration.indexOf('=');
+                if (equalsIndex != -1) {
+                    String varName = declaration.substring(0, equalsIndex).trim();
+                    String valueExpression = declaration.substring(equalsIndex + 1).trim().replace(";", "");
+                    Object value = evaluate(valueExpression);
+                    environment.setVariable(varName, value);
+                }
+                
+                else {
+                    throw new RuntimeException("Syntax error in variable declaration: " + expression);
+                }
+            }
             
             else {
                 // Evaluate as a general expression (for variable assignments, etc.)
