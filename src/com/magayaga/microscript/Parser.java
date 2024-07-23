@@ -110,8 +110,8 @@ public class Parser {
             return;
         }
 
-        // Variable declaration or assignment
-        if (line.startsWith("var ")) {
+        // Variable or boolean declaration
+        if (line.startsWith("var ") || line.startsWith("bool ")) {
             Executor executor = new Executor(environment);
             executor.execute(line);
             return;
@@ -122,11 +122,7 @@ public class Parser {
             String varName = line.substring(0, equalsIndex).trim();
             String valueExpression = line.substring(equalsIndex + 1).trim().replace(";", "");
             Executor executor = new Executor(environment);
-            Object value = executor.evaluate(valueExpression);
-            environment.setVariable(varName, value);
-            return;
+            executor.execute(varName + " = " + valueExpression);
         }
-
-        System.out.println("Syntax error: " + line);
     }
 }

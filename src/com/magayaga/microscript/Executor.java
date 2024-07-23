@@ -34,7 +34,7 @@ public class Executor {
                     System.out.println(result);
                 }
             }
-
+            
             else if (expression.startsWith("var ")) {
                 // Handle variable declaration
                 String declaration = expression.substring(4).trim();
@@ -48,6 +48,28 @@ public class Executor {
                 
                 else {
                     throw new RuntimeException("Syntax error in variable declaration: " + expression);
+                }
+            }
+            
+            else if (expression.startsWith("bool ")) {
+                // Handle boolean declaration
+                String declaration = expression.substring(5).trim();
+                int equalsIndex = declaration.indexOf('=');
+                if (equalsIndex != -1) {
+                    String boolName = declaration.substring(0, equalsIndex).trim();
+                    String valueExpression = declaration.substring(equalsIndex + 1).trim().replace(";", "");
+                    Object value = evaluate(valueExpression);
+                    if (value instanceof Boolean) {
+                        environment.setVariable(boolName, value);
+                    }
+                    
+                    else {
+                        throw new RuntimeException("Syntax error: " + valueExpression + " is not a boolean.");
+                    }
+                }
+                
+                else {
+                    throw new RuntimeException("Syntax error in boolean declaration: " + expression);
                 }
             }
             
@@ -115,6 +137,37 @@ public class Executor {
         Object variableValue = environment.getVariable(expression);
         if (variableValue != null) {
             return variableValue;
+        }
+
+        // Check if the expression is a boolean literal or negation
+        if (expression.equals("true")) {
+            return true;
+        }
+        
+        else if (expression.equals("false")) {
+            return false;
+        }
+        
+        else if (expression.startsWith("not ")) {
+            Object value = evaluate(expression.substring(4).trim());
+            if (value instanceof Boolean) {
+                return !(Boolean) value;
+            }
+            
+            else {
+                throw new RuntimeException("Syntax error: " + expression + " is not a boolean.");
+            }
+        }
+        
+        else if (expression.startsWith("!")) {
+            Object value = evaluate(expression.substring(1).trim());
+            if (value instanceof Boolean) {
+                return !(Boolean) value;
+            }
+            
+            else {
+                throw new RuntimeException("Syntax error: " + expression + " is not a boolean.");
+            }
         }
 
         // Otherwise, treat it as an arithmetic expression

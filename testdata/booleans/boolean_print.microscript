@@ -1,0 +1,11 @@
+// Boolean using MicroScript
+// Copyright (c) 2024 Cyril John magayaga
+
+function main() {
+    bool conditionA = false
+    bool conditionB = true
+    console.write(conditionA);
+    console.write(conditionB);
+}
+
+main();

@@ -1,0 +1,23 @@
+// Boolean with/without not operator using MicroScript
+// Copyright (c) 2024 Cyril John magayaga
+
+function main() {
+    bool conditionA = true
+    bool conditionB = not conditionA
+    bool conditionC = false
+    bool conditionD = not conditionC
+    bool conditionE = not true
+    bool conditionF = not false
+    bool conditionG = !true
+    bool conditionH = !false
+    console.write(conditionA);
+    console.write(conditionB);
+    console.write(conditionC);
+    console.write(conditionD);
+    console.write(conditionE);
+    console.write(conditionF);
+    console.write(conditionG);
+    console.write(conditionH);
+}
+
+main();
