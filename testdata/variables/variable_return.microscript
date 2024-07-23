@@ -1,0 +1,14 @@
+// Return keyword with variable using MicroScript
+// Copyright (c) 2024 Cyril John Magayaga
+
+// Cube function using MicroScript
+function cube(number) {
+    var cubed_number = number ^ 3
+    return cubed_number
+}
+
+function main() {
+    console.write(cube(3));
+}
+
+main();

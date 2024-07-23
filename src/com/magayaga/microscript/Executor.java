@@ -85,7 +85,7 @@ public class Executor {
         Object returnValue = null;
         for (String line : function.getBody()) {
             if (line.trim().startsWith("return")) {
-                String returnExpression = line.substring(line.indexOf("return") + 6, line.indexOf(";")).trim();
+                String returnExpression = line.substring(line.indexOf("return") + 6).trim().replace(";", "");
                 returnValue = new Executor(localEnv).evaluate(returnExpression);
                 return returnValue; // Exit the function immediately after return
             }

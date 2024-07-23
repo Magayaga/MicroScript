@@ -110,26 +110,14 @@ public class Parser {
             return;
         }
 
-        // Variable assignment or expression evaluation
+        // Variable declaration or assignment
         if (line.startsWith("var ")) {
-            line = line.substring(4); // Remove 'var ' prefix
-            int equalsIndex = line.indexOf('=');
-            if (equalsIndex != -1) {
-                String varName = line.substring(0, equalsIndex).trim();
-                String valueExpression = line.substring(equalsIndex + 1).trim().replace(";", "");
-                Executor executor = new Executor(environment);
-                Object value = executor.evaluate(valueExpression);
-                environment.setVariable(varName, value);
-            }
-            
-            else {
-                System.out.println("Syntax error: Invalid variable declaration.");
-            }
+            Executor executor = new Executor(environment);
+            executor.execute(line);
             return;
         }
-
-        // Variable assignment without 'var'
-        if (line.contains("=")) {
+        
+        else if (line.contains("=")) {
             int equalsIndex = line.indexOf('=');
             String varName = line.substring(0, equalsIndex).trim();
             String valueExpression = line.substring(equalsIndex + 1).trim().replace(";", "");
