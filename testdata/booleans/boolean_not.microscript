@@ -1,4 +1,4 @@
-// Boolean with/without not operator using MicroScript
+// Boolean with/without "not" or "!" operator using MicroScript
 // Copyright (c) 2024 Cyril John magayaga
 
 function main() {
