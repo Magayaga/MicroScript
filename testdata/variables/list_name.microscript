@@ -1,0 +1,9 @@
+// List name using MicroScript
+// Copyright (c) 2025 Cyril John Magayaga
+
+function main() {
+    list fruits = ["apple", "banana", "melon", "mango", "berry", "dragonfruit"];
+    console.write(fruits);
+}
+
+main();

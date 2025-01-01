@@ -1,0 +1,9 @@
+// List number using MicroScript
+// Copyright (c) 2025 Cyril John Magayaga
+
+function main() {
+    list numbers = [-1, 9, 2.7651, 1/2];
+    console.write(numbers);
+}
+
+main();

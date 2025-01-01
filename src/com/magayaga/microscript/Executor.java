@@ -9,6 +9,9 @@ package com.magayaga.microscript;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.util.Arrays;
 
 public class Executor {
     private final Environment environment;
@@ -32,6 +35,16 @@ public class Executor {
                     String innerExpression = matcher.group(1).trim();
                     Object result = evaluate(innerExpression);
                     System.out.println(result);
+                }
+            }
+
+            else if (expression.startsWith("console.system")) {
+                // Extract the command inside console.system()
+                Pattern pattern = Pattern.compile("console.system\\((.*)\\);");
+                Matcher matcher = pattern.matcher(expression);
+                if (matcher.matches()) {
+                    String command = matcher.group(1).trim();
+                    executeSystemCommand(command);
                 }
             }
             
@@ -72,6 +85,29 @@ public class Executor {
                     throw new RuntimeException("Syntax error in boolean declaration: " + expression);
                 }
             }
+
+            else if (expression.startsWith("list ")) {
+                // Handle list declaration
+                String declaration = expression.substring(5).trim();
+                int equalsIndex = declaration.indexOf('=');
+                if (equalsIndex != -1) {
+                    String listName = declaration.substring(0, equalsIndex).trim();
+                    String valueExpression = declaration.substring(equalsIndex + 1).trim().replace(";", "");
+                    if (valueExpression.startsWith("[") && valueExpression.endsWith("]")) {
+                        String elements = valueExpression.substring(1, valueExpression.length() - 1);
+                        ListVariable list = new ListVariable(elements.split("\\s*,\\s*"));
+                        environment.setVariable(listName, list);
+                    }
+                    
+                    else {
+                        throw new RuntimeException("Syntax error in list declaration: " + valueExpression);
+                    }
+                }
+                
+                else {
+                    throw new RuntimeException("Syntax error in list declaration: " + expression);
+                }
+            }
             
             else {
                 // Evaluate as a general expression (for variable assignments, etc.)
@@ -82,6 +118,16 @@ public class Executor {
         catch (Exception e) {
             System.out.println("Evaluation error: " + e.getMessage());
         }
+    }
+
+    private void executeSystemCommand(String command) throws Exception {
+        Process process = Runtime.getRuntime().exec(command);
+        BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+        String line;
+        while ((line = reader.readLine()) != null) {
+            System.out.println(line);
+        }
+        reader.close();
     }
 
     public Object executeFunction(String functionName, String[] args) {

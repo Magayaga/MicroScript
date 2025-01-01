@@ -1,0 +1,9 @@
+// System using MicroScript
+// Copyright (c) 2025 Cyril John Magayaga
+
+function main() {
+    list numbers = [1, 2, 3];
+    console.write(numbers);
+}
+
+main();
