@@ -61,6 +61,14 @@ function main() {
 main();
 ```
 
+### Call main function
+
+```js
+main();
+```
+
+This executes the `main` function, starting the program.
+
 ## Copyright
 
 Copyright (c) 2024-2025 Cyril John Magayaga.
