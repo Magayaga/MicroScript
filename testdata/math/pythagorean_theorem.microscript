@@ -1,0 +1,15 @@
+// Compute the pythagorean theorem using MicroScript
+// Copyright (c) 2025 Cyril John Magayaga
+
+function pythrem(a, b) {
+    return (a * a) + (b * b)
+}
+
+// Main function
+function main() {
+    console.write(pythrem(4, 3));
+    console.write(pythrem(11, 8));
+}
+
+// Call the main function
+main();

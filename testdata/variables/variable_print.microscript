@@ -1,0 +1,11 @@
+// Printing variables using MicroScript
+// Copyright (c) 2024 Cyril John magayaga
+
+function main() {
+    var numberA = 25
+    var numberB = 3
+    var numberC = numberA * numberB
+    console.write("{} times {} is equal to {}", numberA, numberB, numberC);
+}
+
+main();

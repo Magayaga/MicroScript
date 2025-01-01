@@ -63,4 +63,4 @@ main();
 
 ## Copyright
 
-Copyright (c) 2024 Cyril John Magayaga.
+Copyright (c) 2024-2025 Cyril John Magayaga.
