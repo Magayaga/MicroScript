@@ -71,4 +71,4 @@ This executes the `main` function, starting the program.
 
 ## Copyright
 
-Copyright (c) 2024-2025 Cyril John Magayaga.
+Copyright (c) 2024-2025 Cyril John Magayaga. icensed under the [MIT license](LICENSE).
