@@ -1,12 +1,12 @@
 # MicroScript
 
-**MicroScript**, often abbreviated as **MUS** and **μs** is a programming language created and developed by Cyril John Magayaga. It was originally written in Java programming language.
+**MicroScript**, often abbreviated as **MUS** and **μs** is a high-level programming language. It was originally written in **Java** programming language.
 
 ## Examples
 
 ### "Hello, World!" program
 
-The following shows how a "Hello, World!" program is written in MicroScript programming language:
+The following shows how a **"Hello, World!"** program is written in MicroScript programming language:
 
 ```js
 // "Hello, World!" program
@@ -71,4 +71,4 @@ This executes the `main` function, starting the program.
 
 ## Copyright
 
-Copyright (c) 2024-2025 Cyril John Magayaga. icensed under the [MIT license](LICENSE).
+Copyright (c) 2024-2025 [Cyril John Magayaga](https://github.com/magayaga). icensed under the [MIT license](LICENSE).
