@@ -1,4 +1,4 @@
-# MicroScript
+# `MicroScript`
 
 **MicroScript**, often abbreviated as **MUS** and **μs** is a high-level programming language. It was originally written in **Java** programming language.
 
