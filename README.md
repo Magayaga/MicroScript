@@ -69,6 +69,24 @@ main();
 
 This executes the `main` function, starting the program.
 
+### Import modules and Libraries
+
+You need to use the `import` keyword along with the desired module name.
+
+```ts
+// Import modules
+import "math"
+
+// Main function
+function main() {
+    console.write(math::PI);
+    console.write(math::E);
+    console.write(math::sqrt(16));
+}
+
+main();
+```
+
 ## Copyright
 
-Copyright (c) 2024-2025 [Cyril John Magayaga](https://github.com/magayaga). icensed under the [MIT license](LICENSE).
+Copyright (c) 2024-2025 [Cyril John Magayaga](https://github.com/magayaga). Licensed under the [MIT license](LICENSE).
