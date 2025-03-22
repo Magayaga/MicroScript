@@ -3,7 +3,7 @@
 
 // Cube function using MicroScript
 function cube(number) {
-    var cubed_number = number ^ 3
+    var cubed_number : Float64 = number ^ 3
     return cubed_number
 }
 

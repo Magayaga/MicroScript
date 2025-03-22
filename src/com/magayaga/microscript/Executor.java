@@ -1,9 +1,3 @@
-/**
- * MicroScript — The programming language
- * Copyright (c) 2024-2025 Cyril John Magayaga
- * 
- * It was originally written in Java programming language.
- */
 package com.magayaga.microscript;
 
 import java.util.List;
@@ -49,13 +43,51 @@ public class Executor {
             }
             
             else if (expression.startsWith("var ")) {
-                // Handle variable declaration
+                // Handle variable declaration with type annotation
                 String declaration = expression.substring(4).trim();
                 int equalsIndex = declaration.indexOf('=');
                 if (equalsIndex != -1) {
-                    String varName = declaration.substring(0, equalsIndex).trim();
+                    String varDeclaration = declaration.substring(0, equalsIndex).trim();
+                    String[] parts = varDeclaration.split(":");
+                    if (parts.length != 2) {
+                        throw new RuntimeException("Syntax error in variable declaration: " + expression);
+                    }
+                    String varName = parts[0].trim();
+                    String typeAnnotation = parts[1].trim();
                     String valueExpression = declaration.substring(equalsIndex + 1).trim().replace(";", "");
                     Object value = evaluate(valueExpression);
+
+                    // Ensure the value matches the type annotation
+                    switch (typeAnnotation) {
+                        case "String":
+                            if (!(value instanceof String)) {
+                                throw new RuntimeException("Type error: " + valueExpression + " is not a String.");
+                            }
+                            break;
+                        case "Int32":
+                            if (!(value instanceof Integer)) {
+                                throw new RuntimeException("Type error: " + valueExpression + " is not an Int32.");
+                            }
+                            break;
+                        case "Int64":
+                            if (!(value instanceof Long)) {
+                                throw new RuntimeException("Type error: " + valueExpression + " is not an Int64.");
+                            }
+                            break;
+                        case "Float32":
+                            if (!(value instanceof Float)) {
+                                throw new RuntimeException("Type error: " + valueExpression + " is not a Float32.");
+                            }
+                            break;
+                        case "Float64":
+                            if (!(value instanceof Double)) {
+                                throw new RuntimeException("Type error: " + valueExpression + " is not a Float64.");
+                            }
+                            break;
+                        default:
+                            throw new RuntimeException("Unknown type annotation: " + typeAnnotation);
+                    }
+
                     environment.setVariable(varName, value);
                 }
                 

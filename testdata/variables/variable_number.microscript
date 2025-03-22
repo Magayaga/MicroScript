@@ -2,8 +2,8 @@
 // Copyright (c) 2024 Cyril John Magayaga
 
 function main() {
-    var pi = 3.14159
-    var tau = pi * 2
+    var pi : Float64 = 3.14159
+    var tau : Float64 = pi * 2
     console.write(pi);
     console.write(tau);
 }

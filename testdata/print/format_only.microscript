@@ -4,7 +4,7 @@
 // Main function
 function main() {
     // "var" keyword means variable
-    var s = "Hello, World!"
+    var s : String = "Hello, World!"
     console.write(s);
 }
 
