@@ -10,12 +10,14 @@ import java.util.List;
 
 public class Function {
     private final String name;
-    private final List<String> parameters;
+    private final List<Parameter> parameters;
+    private final String returnType;
     private final List<String> body;
 
-    public Function(String name, List<String> parameters, List<String> body) {
+    public Function(String name, List<Parameter> parameters, String returnType, List<String> body) {
         this.name = name;
         this.parameters = parameters;
+        this.returnType = returnType;
         this.body = body;
     }
 
@@ -23,8 +25,12 @@ public class Function {
         return name;
     }
 
-    public List<String> getParameters() {
+    public List<Parameter> getParameters() {
         return parameters;
+    }
+
+    public String getReturnType() {
+        return returnType;
     }
 
     public List<String> getBody() {

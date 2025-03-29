@@ -32,11 +32,10 @@ public class Parser {
             }
 
             // Function definition
-            if (line.startsWith("function")) {
+            if (line.startsWith("function ")) {
                 int closingBraceIndex = findClosingBrace(i);
                 if (closingBraceIndex == -1) {
-                    System.out.println("Syntax error: Unmatched '{' in function definition.");
-                    return;
+                    throw new RuntimeException("Syntax error: Unmatched '{' in function definition.");
                 }
                 parseFunction(i, closingBraceIndex);
                 i = closingBraceIndex + 1;
@@ -52,21 +51,30 @@ public class Parser {
 
     private void parseFunction(int start, int end) {
         String header = lines.get(start).trim();
-        Matcher matcher = Pattern.compile("function\\s+(\\w+)\\(([^)]*)\\)\\s*\\{").matcher(header);
+        Matcher matcher = Pattern.compile("function\\s+(\\w+)\\(([^)]*)\\)\\s*->\\s*(\\w+)\\s*\\{").matcher(header);
         if (!matcher.matches()) {
-            System.out.println("Syntax error: Invalid function declaration.");
-            return;
+            throw new RuntimeException("Syntax error: Invalid function declaration.");
         }
 
         String name = matcher.group(1);
         String params = matcher.group(2).trim();
-        List<String> parameters = params.isEmpty() ? new ArrayList<>() : Arrays.asList(params.split("\\s*,\\s*"));
+        String returnType = matcher.group(3).trim();
+        List<Parameter> parameters = new ArrayList<>();
+        if (!params.isEmpty()) {
+            for (String param : params.split("\\s*,\\s*")) {
+                String[] parts = param.split(":");
+                if (parts.length != 2) {
+                    throw new RuntimeException("Syntax error: Invalid parameter declaration.");
+                }
+                parameters.add(new Parameter(parts[0].trim(), parts[1].trim()));
+            }
+        }
         List<String> body = new ArrayList<>();
         for (int i = start + 1; i < end; i++) {
             body.add(lines.get(i).trim());
         }
 
-        environment.defineFunction(new Function(name, parameters, body));
+        environment.defineFunction(new Function(name, parameters, returnType, body));
     }
 
     private int findClosingBrace(int start) {

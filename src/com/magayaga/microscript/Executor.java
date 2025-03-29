@@ -171,7 +171,7 @@ public class Executor {
             throw new RuntimeException("Function not found: " + functionName);
         }
 
-        List<String> parameters = function.getParameters();
+        List<Parameter> parameters = function.getParameters();
         if (args == null) {
             args = new String[0]; // Ensure args is not null
         }
@@ -182,7 +182,34 @@ public class Executor {
         Environment localEnv = new Environment(environment);
         for (int i = 0; i < args.length; i++) {
             Object value = evaluate(args[i]);
-            localEnv.setVariable(parameters.get(i), value);
+            String expectedType = parameters.get(i).getType();
+            // Ensure the value matches the expected type
+            switch (expectedType) {
+                case "String":
+                    if (!(value instanceof String)) {
+                        throw new RuntimeException("Type error: Argument " + args[i] + " is not a String.");
+                    }
+                    break;
+                case "Int32":
+                case "Int64":
+                    if (!(value instanceof Integer)) {
+                        throw new RuntimeException("Type error: Argument " + args[i] + " is not an Integer.");
+                    }
+                    break;
+                case "Float32":
+                    if (!(value instanceof Float)) {
+                        throw new RuntimeException("Type error: Argument " + args[i] + " is not a Float32.");
+                    }
+                    break;
+                case "Float64":
+                    if (!(value instanceof Double)) {
+                        throw new RuntimeException("Type error: Argument " + args[i] + " is not a Float64.");
+                    }
+                    break;
+                default:
+                    throw new RuntimeException("Unknown type annotation: " + expectedType);
+            }
+            localEnv.setVariable(parameters.get(i).getName(), value);
         }
 
         Object returnValue = null;
@@ -190,6 +217,33 @@ public class Executor {
             if (line.trim().startsWith("return")) {
                 String returnExpression = line.substring(line.indexOf("return") + 6).trim().replace(";", "");
                 returnValue = new Executor(localEnv).evaluate(returnExpression);
+                // Ensure the return value matches the expected return type
+                String expectedReturnType = function.getReturnType();
+                switch (expectedReturnType) {
+                    case "String":
+                        if (!(returnValue instanceof String)) {
+                            throw new RuntimeException("Type error: Return value " + returnValue + " is not a String.");
+                        }
+                        break;
+                    case "Int32":
+                    case "Int64":
+                        if (!(returnValue instanceof Integer)) {
+                            throw new RuntimeException("Type error: Return value " + returnValue + " is not an Integer.");
+                        }
+                        break;
+                    case "Float32":
+                        if (!(returnValue instanceof Float)) {
+                            throw new RuntimeException("Type error: Return value " + returnValue + " is not a Float32.");
+                        }
+                        break;
+                    case "Float64":
+                        if (!(returnValue instanceof Double)) {
+                            throw new RuntimeException("Type error: Return value " + returnValue + " is not a Float64.");
+                        }
+                        break;
+                    default:
+                        throw new RuntimeException("Unknown return type annotation: " + expectedReturnType);
+                }
                 return returnValue; // Exit the function immediately after return
             }
             new Executor(localEnv).execute(line);
