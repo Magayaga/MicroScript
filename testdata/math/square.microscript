@@ -2,7 +2,7 @@
 // Copyright (c) 2024 Cyril John Magayaga
 
 // Function to compute the square
-function square(number) {
+function square(number: Float64) -> Float64 {
     return number * number;
 }
 

@@ -51,14 +51,14 @@ public class Parser {
 
     private void parseFunction(int start, int end) {
         String header = lines.get(start).trim();
-        Matcher matcher = Pattern.compile("function\\s+(\\w+)\\(([^)]*)\\)\\s*->\\s*(\\w+)\\s*\\{").matcher(header);
+        Matcher matcher = Pattern.compile("function\\s+(\\w+)\\(([^)]*)\\)\\s*(->\\s*(\\w+))?\\s*\\{").matcher(header);
         if (!matcher.matches()) {
             throw new RuntimeException("Syntax error: Invalid function declaration.");
         }
-
+    
         String name = matcher.group(1);
         String params = matcher.group(2).trim();
-        String returnType = matcher.group(3).trim();
+        String returnType = matcher.group(4) != null ? matcher.group(4).trim() : "void";
         List<Parameter> parameters = new ArrayList<>();
         if (!params.isEmpty()) {
             for (String param : params.split("\\s*,\\s*")) {
@@ -73,7 +73,7 @@ public class Parser {
         for (int i = start + 1; i < end; i++) {
             body.add(lines.get(i).trim());
         }
-
+    
         environment.defineFunction(new Function(name, parameters, returnType, body));
     }
 

@@ -1,7 +1,7 @@
 // Compute the pythagorean theorem using MicroScript
 // Copyright (c) 2025 Cyril John Magayaga
 
-function pythrem(a, b) {
+function pythrem(a: Float64, b: Float64) -> Float64 {
     return (a * a) + (b * b)
 }
 
