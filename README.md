@@ -1,6 +1,6 @@
 # `MicroScript`
 
-**MicroScript**, often abbreviated as **MUS** and **μs** is a high-level programming language. It was originally written in **Java** programming language.
+**MicroScript**, often abbreviated as **MUS** and **μs** is a high-level programming language. It was originally written in **Java** and **C#** programming languages.
 
 ## Examples
 ### "Hello, World!" program
