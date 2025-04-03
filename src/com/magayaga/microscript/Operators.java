@@ -1,6 +1,6 @@
 /**
  * MicroScript — The programming language
- * Copyright (c) 2024-2025 Cyril John Magayaga
+ * Copyright (c) 2025 Cyril John Magayaga
  * 
  * It was originally written in Java programming language.
  */
@@ -14,7 +14,9 @@ public class Operators {
             intValue++;
             environment.setVariable(varName, intValue);
             return intValue;
-        } else {
+        }
+        
+        else {
             throw new RuntimeException("Type error: " + varName + " is not an Integer.");
         }
     }
@@ -26,7 +28,9 @@ public class Operators {
             intValue--;
             environment.setVariable(varName, intValue);
             return intValue;
-        } else {
+        }
+        
+        else {
             throw new RuntimeException("Type error: " + varName + " is not an Integer.");
         }
     }
