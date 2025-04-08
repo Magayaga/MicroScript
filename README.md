@@ -28,7 +28,9 @@ console.write(45 * 12);
 console.write(1028 / 16);
 ```
 
-### Function
+### Functions
+
+1. **Recursive functions**
 The following shows how a **"Hello, World!"** program with function is written in MicroScript programming language:
 
 ```js
@@ -57,13 +59,24 @@ function main() {
 main();
 ```
 
+2. **Arrow functions**
+
+MicroScript's arrow functions are a concise syntax for writing function expressions and strings. Arrow functions allow us to write shorter function syntax:
+
+```js
+// Arrow function to compute the square
+var square = (number) => number * number;
+console.write(square(14));
+```
+
 ### Call main function
 
+Recursive function can be
 ```js
 main();
 ```
 
-This executes the `main` function, starting the program.
+This executes the recursive `main` function, starting the program.
 
 ### Import modules and Libraries (Coming Soon)
 You need to use the `import` keyword along with the desired module name.
