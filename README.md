@@ -28,7 +28,8 @@ console.write(45 * 12);
 console.write(1028 / 16);
 ```
 
-### Function
+### Functions
+
 The following shows how a **"Hello, World!"** program with function is written in MicroScript programming language:
 
 ```js
@@ -63,7 +64,7 @@ main();
 main();
 ```
 
-This executes the `main` function, starting the program.
+This executes the recursive `main` function, starting the program.
 
 ### Import modules and Libraries (Coming Soon)
 You need to use the `import` keyword along with the desired module name.
