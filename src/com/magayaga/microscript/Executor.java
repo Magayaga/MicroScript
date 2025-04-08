@@ -34,7 +34,26 @@ public class Executor {
                 if (matcher.matches()) {
                     String innerExpression = matcher.group(1).trim();
                     Object result = evaluate(innerExpression);
-                    System.out.println(result);
+                    if (result instanceof String) {
+                        String output = (String) result;
+                        // Replace placeholders with variable values
+                        Pattern placeholderPattern = Pattern.compile("\\{(.*?)\\}");
+                        Matcher placeholderMatcher = placeholderPattern.matcher(output);
+                        StringBuffer formattedOutput = new StringBuffer();
+                        while (placeholderMatcher.find()) {
+                            String variableName = placeholderMatcher.group(1);
+                            Object variableValue = environment.getVariable(variableName);
+                            if (variableValue != null) {
+                                placeholderMatcher.appendReplacement(formattedOutput, variableValue.toString());
+                            } else {
+                                placeholderMatcher.appendReplacement(formattedOutput, "{" + variableName + "}");
+                            }
+                        }
+                        placeholderMatcher.appendTail(formattedOutput);
+                        System.out.println(formattedOutput.toString());
+                    } else {
+                        System.out.println(result);
+                    }
                 }
             }
 

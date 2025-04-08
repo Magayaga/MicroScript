@@ -1,0 +1,13 @@
+// console.write() with variable using MicroScript
+// The example below assigns a value to the variable with name "full name" and outputs its value.
+// Copyright (c) 2025 Cyril John Magayaga
+
+function main() {
+    var full_name : String = "Albert Einstein";
+    console.write(full_name);
+
+    // new console.write() with variable like Rust programming language.
+    console.write("My name is {full_name}!");
+}
+
+main();
