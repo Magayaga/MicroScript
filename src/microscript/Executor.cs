@@ -304,7 +304,8 @@ namespace com.magayaga.microscript
         {
             if (expression.StartsWith("\"") && expression.EndsWith("\""))
             {
-                return expression.Substring(1, expression.Length - 2);
+                var strExpression = expression.Substring(1, expression.Length - 2);
+                return InterpolateString(strExpression);
             }
 
             var functionCallPattern = new Regex(@"(\w+)\((.*)\)");
@@ -363,6 +364,26 @@ namespace com.magayaga.microscript
 
             var evaluator = new ExpressionEvaluator(expression, environment);
             return evaluator.Parse();
+        }
+
+        private string InterpolateString(string strExpression)
+        {
+            var pattern = new Regex(@"\{(\w+)\}");
+            var matches = pattern.Matches(strExpression);
+            foreach (Match match in matches)
+            {
+                var varName = match.Groups[1].Value;
+                var variableValue = environment.GetVariable(varName);
+                if (variableValue != null)
+                {
+                    strExpression = strExpression.Replace($"{{{varName}}}", variableValue.ToString());
+                }
+                else
+                {
+                    throw new Exception($"Variable '{varName}' not found.");
+                }
+            }
+            return strExpression;
         }
     }
 }
