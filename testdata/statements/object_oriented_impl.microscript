@@ -1,0 +1,16 @@
+impl mathematics {
+    fn sqrt(Float64: number) -> number {
+        return number * 0.5;
+    }
+
+    fn square(Float64: number) -> number {
+        return number * number;
+    }
+}
+
+function main() {
+    console.write(mathematics::sqrt(9));
+    console.write(mathematics::square(13));
+}
+
+main();

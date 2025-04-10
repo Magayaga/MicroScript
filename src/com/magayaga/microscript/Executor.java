@@ -32,28 +32,58 @@ public class Executor {
                 Pattern pattern = Pattern.compile("console.write\\((.*)\\);");
                 Matcher matcher = pattern.matcher(expression);
                 if (matcher.matches()) {
-                    String innerExpression = matcher.group(1).trim();
-                    Object result = evaluate(innerExpression);
-                    if (result instanceof String) {
-                        String output = (String) result;
-                        // Replace placeholders with variable values
-                        Pattern placeholderPattern = Pattern.compile("\\{(.*?)\\}");
-                        Matcher placeholderMatcher = placeholderPattern.matcher(output);
-                        StringBuffer formattedOutput = new StringBuffer();
-                        while (placeholderMatcher.find()) {
-                            String variableName = placeholderMatcher.group(1);
-                            Object variableValue = environment.getVariable(variableName);
-                            if (variableValue != null) {
-                                placeholderMatcher.appendReplacement(formattedOutput, variableValue.toString());
-                            } else {
-                                placeholderMatcher.appendReplacement(formattedOutput, "{" + variableName + "}");
+                    String arguments = matcher.group(1).trim();
+            
+                    // Check if the arguments contain placeholders and additional values
+                    String[] parts = arguments.split(",", 2);
+                    String output = parts[0].trim(); // The main string or variable
+                    Object[] additionalArgs = parts.length > 1 
+                        ? Arrays.stream(parts[1].split(","))
+                                .map(arg -> evaluate(arg.trim()))
+                                .toArray()
+                        : new Object[0];
+            
+                    // If the first argument is a variable, print its value directly
+                    if (!output.startsWith("\"")) {
+                        Object result = environment.getVariable(output);
+                        if (result != null) {
+                            System.out.println(result);
+                        } else {
+                            throw new RuntimeException("Variable not found: " + output);
+                        }
+                        return;
+                    }
+            
+                    // Remove quotes from the main string
+                    output = output.substring(1, output.length() - 1);
+            
+                    // Replace placeholders with variable values or provided arguments
+                    Pattern placeholderPattern = Pattern.compile("\\{(.*?)}");
+                    Matcher placeholderMatcher = placeholderPattern.matcher(output);
+                    StringBuffer formattedOutput = new StringBuffer();
+                    int argIndex = 0;
+            
+                    while (placeholderMatcher.find()) {
+                        String placeholder = placeholderMatcher.group(1).trim();
+                        Object replacement;
+            
+                        // If the placeholder is empty ({}), use additional arguments
+                        if (placeholder.isEmpty() && argIndex < additionalArgs.length) {
+                            replacement = additionalArgs[argIndex++];
+                        } 
+                        // Otherwise, use the variable from the environment
+                        else {
+                            replacement = environment.getVariable(placeholder);
+                            if (replacement == null) {
+                                replacement = "{" + placeholder + "}"; // Keep unresolved placeholder
                             }
                         }
-                        placeholderMatcher.appendTail(formattedOutput);
-                        System.out.println(formattedOutput.toString());
-                    } else {
-                        System.out.println(result);
+            
+                        placeholderMatcher.appendReplacement(formattedOutput, replacement.toString());
                     }
+                    placeholderMatcher.appendTail(formattedOutput);
+            
+                    System.out.println(formattedOutput.toString());
                 }
             }
 

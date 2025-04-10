@@ -1,0 +1,10 @@
+// Arrow function shorter than function.
+let add = |Float64: a, Float64: b| => Float64 {a * b};
+let greet = |String: &| => console.write(“Hello!”);
+
+function main() {
+    console.write(add(9, 5));
+    greet();
+}
+
+main();

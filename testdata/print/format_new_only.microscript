@@ -5,9 +5,9 @@
 function main() {
     var full_name : String = "Albert Einstein";
     console.write(full_name);
-
     // new console.write() with variable like Rust programming language.
     console.write("My name is {full_name}!");
+    console.write("I'm {}!", full_name);
 }
 
 main();
