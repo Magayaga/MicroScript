@@ -7,8 +7,13 @@
 The following shows how a **"Hello, World!"** program is written in MicroScript programming language:
 
 ```js
-// "Hello, World!" program
-console.write("Hello, World!");
+// "Hello, World!" program using MicroScript
+function main() {
+    console.write("Hello, World!");
+    return 0;
+}
+
+main();
 ```
 
 ### Arithmetic expressions
