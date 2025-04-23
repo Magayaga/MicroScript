@@ -7,6 +7,7 @@
 package com.magayaga.microscript;
 
 import java.util.List;
+import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.io.BufferedReader;
@@ -29,26 +30,50 @@ public class Executor {
 
             if (expression.startsWith("console.write")) {
                 // Extract the content inside console.write()
-                Pattern pattern = Pattern.compile("console.write\\((.*)\\);");
+                Pattern pattern = Pattern.compile("console\\.write\\((.*)\\);");
                 Matcher matcher = pattern.matcher(expression);
                 if (matcher.matches()) {
                     String arguments = matcher.group(1).trim();
             
-                    // Check if the arguments contain placeholders and additional values
-                    String[] parts = arguments.split(",", 2);
-                    String output = parts[0].trim(); // The main string or variable
-                    Object[] additionalArgs = parts.length > 1 
-                        ? Arrays.stream(parts[1].split(","))
-                                .map(arg -> evaluate(arg.trim()))
-                                .toArray()
+                    // Smarter argument splitter (respecting commas inside quotes)
+                    List<String> partsList = new ArrayList<>();
+                    StringBuilder current = new StringBuilder();
+                    boolean inQuotes = false;
+                    
+                    for (int i = 0; i < arguments.length(); i++) {
+                        char c = arguments.charAt(i);
+                        if (c == '"') {
+                            inQuotes = !inQuotes; // Toggle in and out of quotes
+                        }
+                        
+                        else if (c == ',' && !inQuotes) {
+                            partsList.add(current.toString().trim());
+                            current.setLength(0);
+                            continue;
+                        }
+                        current.append(c);
+                    }
+                    
+                    if (current.length() > 0) {
+                        partsList.add(current.toString().trim());
+                    }
+            
+                    // Process parts
+                    String output = partsList.get(0); // The main string or variable
+                    Object[] additionalArgs = partsList.size() > 1
+                        ? partsList.subList(1, partsList.size()).stream()
+                            .map(arg -> evaluate(arg.trim()))
+                            .toArray()
                         : new Object[0];
             
-                    // If the first argument is a variable, print its value directly
-                    if (!output.startsWith("\"")) {
+                    // If first argument is a variable (not a string), print its value
+                    if (!output.startsWith("\"") || !output.endsWith("\"")) {
                         Object result = environment.getVariable(output);
                         if (result != null) {
                             System.out.println(result);
-                        } else {
+                        }
+                        
+                        else {
                             throw new RuntimeException("Variable not found: " + output);
                         }
                         return;
@@ -57,7 +82,7 @@ public class Executor {
                     // Remove quotes from the main string
                     output = output.substring(1, output.length() - 1);
             
-                    // Replace placeholders with variable values or provided arguments
+                    // Replace placeholders with variables or args
                     Pattern placeholderPattern = Pattern.compile("\\{(.*?)}");
                     Matcher placeholderMatcher = placeholderPattern.matcher(output);
                     StringBuffer formattedOutput = new StringBuffer();
@@ -67,15 +92,14 @@ public class Executor {
                         String placeholder = placeholderMatcher.group(1).trim();
                         Object replacement;
             
-                        // If the placeholder is empty ({}), use additional arguments
                         if (placeholder.isEmpty() && argIndex < additionalArgs.length) {
                             replacement = additionalArgs[argIndex++];
-                        } 
-                        // Otherwise, use the variable from the environment
+                        }
+                        
                         else {
                             replacement = environment.getVariable(placeholder);
                             if (replacement == null) {
-                                replacement = "{" + placeholder + "}"; // Keep unresolved placeholder
+                                replacement = "{" + placeholder + "}"; // Unresolved
                             }
                         }
             
@@ -85,7 +109,7 @@ public class Executor {
             
                     System.out.println(formattedOutput.toString());
                 }
-            }
+            }            
 
             else if (expression.startsWith("console.system")) {
                 // Extract the command inside console.system()
