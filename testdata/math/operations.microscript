@@ -1,0 +1,11 @@
+// Mathematical operations using MicroScript
+// Copyright (c) 2025 Cyril John Magayaga
+
+function main() {
+    var number: Float64 = 3.14159
+    console.write(number * 2);
+    console.write("{}", number * 2);
+    console.write("{2* number}");
+}
+
+main();

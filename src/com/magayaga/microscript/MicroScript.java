@@ -15,7 +15,7 @@ import java.util.Arrays;
 public class MicroScript {
     // List of valid MicroScript file extensions
     private static final List<String> VALID_EXTENSIONS = Arrays.asList(
-        ".microscript", ".mus", ".μs", ".📜"
+        ".microscript", ".mus"
     );
     
     public static void main(String[] args) {

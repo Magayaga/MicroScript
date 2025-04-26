@@ -2,10 +2,10 @@
 // Copyright (c) 2024 Cyril John magayaga
 
 function main() {
-    var numberA : Float64 = 25
-    var numberB : Float64 = 3
-    var numberC : Float64 = numberA * numberB
-    console.write("{} times {} is equal to {}", numberA, numberB, numberC);
+    var numberA: Float64 = 25;
+    var numberB: Float64 = 3;
+    var numberC: Float64 = numberA * numberB;
+    console.write("{numberA} times {numberB} is equal to {numberC}");
 }
 
 main();

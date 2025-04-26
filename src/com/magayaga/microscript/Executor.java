@@ -33,83 +33,71 @@ public class Executor {
                 Pattern pattern = Pattern.compile("console\\.write\\((.*)\\);");
                 Matcher matcher = pattern.matcher(expression);
                 if (matcher.matches()) {
-                    String arguments = matcher.group(1).trim();
-            
-                    // Smarter argument splitter (respecting commas inside quotes)
-                    List<String> partsList = new ArrayList<>();
-                    StringBuilder current = new StringBuilder();
-                    boolean inQuotes = false;
+                    String innerContent = matcher.group(1).trim();
                     
-                    for (int i = 0; i < arguments.length(); i++) {
-                        char c = arguments.charAt(i);
-                        if (c == '"') {
-                            inQuotes = !inQuotes; // Toggle in and out of quotes
-                        }
-                        
-                        else if (c == ',' && !inQuotes) {
-                            partsList.add(current.toString().trim());
-                            current.setLength(0);
-                            continue;
-                        }
-                        current.append(c);
+                    // Split the content by commas, but respect quotes and parentheses
+                    List<String> arguments = splitArguments(innerContent);
+                    
+                    if (arguments.isEmpty()) {
+                        throw new RuntimeException("console.write() requires at least one argument");
                     }
                     
-                    if (current.length() > 0) {
-                        partsList.add(current.toString().trim());
-                    }
-            
-                    // Process parts
-                    String output = partsList.get(0); // The main string or variable
-                    Object[] additionalArgs = partsList.size() > 1
-                        ? partsList.subList(1, partsList.size()).stream()
-                            .map(arg -> evaluate(arg.trim()))
-                            .toArray()
-                        : new Object[0];
-            
-                    // If first argument is a variable (not a string), print its value
-                    if (!output.startsWith("\"") || !output.endsWith("\"")) {
-                        Object result = environment.getVariable(output);
-                        if (result != null) {
-                            System.out.println(result);
-                        }
-                        
-                        else {
-                            throw new RuntimeException("Variable not found: " + output);
-                        }
+                    // Process first argument
+                    Object firstArg = evaluate(arguments.get(0));
+                    
+                    // Handle case where first argument is not a string template
+                    if (!(firstArg instanceof String)) {
+                        // For non-string values, just print them directly
+                        System.out.println(firstArg);
                         return;
                     }
-            
-                    // Remove quotes from the main string
-                    output = output.substring(1, output.length() - 1);
-            
-                    // Replace placeholders with variables or args
-                    Pattern placeholderPattern = Pattern.compile("\\{(.*?)}");
-                    Matcher placeholderMatcher = placeholderPattern.matcher(output);
-                    StringBuffer formattedOutput = new StringBuffer();
-                    int argIndex = 0;
-            
+                    
+                    // Process as string template if it's a string
+                    String template = (String) firstArg;
+                    
+                    // Process the template with expressions - {expression} style
+                    StringBuffer output = new StringBuffer();
+                    Pattern exprPattern = Pattern.compile("\\{([^{}]+)\\}");
+                    Matcher placeholderMatcher = exprPattern.matcher(template);
+                    
                     while (placeholderMatcher.find()) {
-                        String placeholder = placeholderMatcher.group(1).trim();
-                        Object replacement;
-            
-                        if (placeholder.isEmpty() && argIndex < additionalArgs.length) {
-                            replacement = additionalArgs[argIndex++];
+                        String expr = placeholderMatcher.group(1).trim();
+                        
+                        try {
+                            // Evaluate the expression inside the braces
+                            Object result = evaluate(expr);
+                            // Replace with the string representation of the result
+                            placeholderMatcher.appendReplacement(output, result.toString().replace("$", "\\$"));
                         }
                         
-                        else {
-                            replacement = environment.getVariable(placeholder);
-                            if (replacement == null) {
-                                replacement = "{" + placeholder + "}"; // Unresolved
-                            }
+                        catch (Exception e) {
+                            // If evaluation fails, leave the placeholder as is
+                            placeholderMatcher.appendReplacement(output, "{" + expr + "}");
                         }
-            
-                        placeholderMatcher.appendReplacement(formattedOutput, replacement.toString());
                     }
-                    placeholderMatcher.appendTail(formattedOutput);
-            
-                    System.out.println(formattedOutput.toString());
+                    placeholderMatcher.appendTail(output);
+                    
+                    // Process positional placeholders - {} style
+                    String result = output.toString();
+                    if (arguments.size() > 1) {
+                        // If there are additional arguments, handle positional placeholders
+                        StringBuffer positionalOutput = new StringBuffer();
+                        Pattern positionalPattern = Pattern.compile("\\{\\}");
+                        Matcher positionalMatcher = positionalPattern.matcher(result);
+                        
+                        int argIndex = 1; // Start from the second argument
+                        while (positionalMatcher.find() && argIndex < arguments.size()) {
+                            Object argValue = evaluate(arguments.get(argIndex++));
+                            positionalMatcher.appendReplacement(positionalOutput, 
+                                argValue == null ? "null" : argValue.toString().replace("$", "\\$"));
+                        }
+                        positionalMatcher.appendTail(positionalOutput);
+                        result = positionalOutput.toString();
+                    }
+                    
+                    System.out.println(result);
                 }
-            }            
+            }
 
             else if (expression.startsWith("console.system")) {
                 // Extract the command inside console.system()
@@ -225,6 +213,44 @@ public class Executor {
         catch (Exception e) {
             System.out.println("Evaluation error: " + e.getMessage());
         }
+    }
+
+    // Helper method to split arguments respecting quotes and nested structures
+    private List<String> splitArguments(String content) {
+        List<String> result = new ArrayList<>();
+        int start = 0;
+        int level = 0;
+        boolean inQuotes = false;
+        
+        for (int i = 0; i < content.length(); i++) {
+            char c = content.charAt(i);
+            
+            if (c == '"' && (i == 0 || content.charAt(i - 1) != '\\')) {
+                inQuotes = !inQuotes;
+            }
+            
+            else if (!inQuotes) {
+                if (c == '(') {
+                    level++;
+                }
+                
+                else if (c == ')') {
+                    level--;
+                }
+                
+                else if (c == ',' && level == 0) {
+                    result.add(content.substring(start, i).trim());
+                    start = i + 1;
+                }
+            }
+        }
+        
+        // Add the last argument
+        if (start < content.length()) {
+            result.add(content.substring(start).trim());
+        }
+        
+        return result;
     }
 
     private void executeSystemCommand(String command) throws Exception {

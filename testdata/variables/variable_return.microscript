@@ -2,7 +2,7 @@
 // Copyright (c) 2024 Cyril John Magayaga
 
 // Cube function using MicroScript
-function cube(number) {
+function cube(number: Float64) -> Float64 {
     var cubed_number : Float64 = number ^ 3
     return cubed_number
 }
