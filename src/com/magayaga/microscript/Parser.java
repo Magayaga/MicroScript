@@ -23,6 +23,7 @@ public class Parser {
 
     public void parse() {
         int i = 0;
+        boolean hasCStyleMain = false;
         while (i < lines.size()) {
             String line = lines.get(i).trim();
             // Skip comments and empty lines
@@ -31,20 +32,34 @@ public class Parser {
                 continue;
             }
 
-            // Function definition
-            if (line.startsWith("function ")) {
+            // C-style function
+            if (line.matches("^(int|float|double|void|String|Int32|Int64|Float32|Float64)\\s+\\w+\\s*\\(.*\\)\\s*\\{")) {
                 int closingBraceIndex = findClosingBrace(i);
-                if (closingBraceIndex == -1) {
-                    throw new RuntimeException("Syntax error: Unmatched '{' in function definition.");
-                }
+                parseFunction(i, closingBraceIndex);
+                if (line.startsWith("int main")) hasCStyleMain = true;
+                i = closingBraceIndex + 1;
+            }
+            // MicroScript-style function
+            else if (line.startsWith("function ")) {
+                int closingBraceIndex = findClosingBrace(i);
                 parseFunction(i, closingBraceIndex);
                 i = closingBraceIndex + 1;
             }
-            
+
             else {
-                // Execute top-level commands
+// Execute top-level commands
+// Execute top-level commands
                 parseLine(line);
                 i++;
+            }
+        }
+
+        // Auto-execute C-style main if present
+        if (hasCStyleMain) {
+            Function mainFunc = environment.getFunction("main");
+            if (mainFunc != null) {
+                Executor executor = new Executor(environment);
+                executor.executeFunction("main", new String[0]);
             }
         }
     }

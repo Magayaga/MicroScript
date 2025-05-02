@@ -43,7 +43,11 @@ public class MicroScript {
         }
         
         try {
+            // After reading lines from file:
             List<String> lines = Files.readAllLines(Paths.get(filePath));
+            // Preprocess macros
+            Define define = new Define();
+            lines = define.preprocess(lines);
             Parser parser = new Parser(lines);
             parser.parse();
         }

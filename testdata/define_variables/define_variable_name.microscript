@@ -1,0 +1,23 @@
+// Define variable using MicroScript
+// Copyright (c) 2025 Cyril John Magayaga
+
+// #define like C programming language style
+// The #define directive originated in C.
+#define PI 3.14159
+#define ADD_NUMBER(a, b) (a + b)
+#define CUBE(number) (number * number * number)
+#define name "A"
+
+function main() {
+    var a: Float64 = 5
+    var c: Float64 = 24
+    var add: Float64 = ADD_NUMBER(a, c)
+    var cube: Float64 = CUBE(3)
+    console.write(PI * 2);
+    console.write("This is result: {PI}");
+    console.write(add);
+    console.write(cube);
+    console.write(add + cube);
+}
+
+main();

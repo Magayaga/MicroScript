@@ -73,16 +73,22 @@ public class ExpressionEvaluator {
             x = Double.parseDouble(expression.substring(startPos, this.pos));
         }
         
-        else if (ch >= 'a' && ch <= 'z') { // functions or variables
-            while (ch >= 'a' && ch <= 'z') nextChar();
+        else if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) { // functions or variables (now supports uppercase)
+            while ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) nextChar();
             String func = expression.substring(startPos, this.pos);
             if (eat('(')) {
                 x = parseExpression();
                 eat(')');
             }
-            
             else {
-                x = environment.getVariable(func) != null ? (double) environment.getVariable(func) : 0;
+                Object varValue = environment.getVariable(func);
+                if (varValue instanceof Number) {
+                    x = ((Number) varValue).doubleValue();
+                } else if (varValue != null) {
+                    throw new RuntimeException("Variable '" + func + "' is not a number.");
+                } else {
+                    x = 0;
+                }
             }
         }
         
