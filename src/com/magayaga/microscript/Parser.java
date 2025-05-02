@@ -33,12 +33,13 @@ public class Parser {
             }
 
             // C-style function
-            if (line.matches("^(int|float|double|void|String|Int32|Int64|Float32|Float64)\\s+\\w+\\s*\\(.*\\)\\s*\\{")) {
+            if (line.matches("^(String|Int32|Int64|Float32|Float64|fn)\\s+\\w+\\s*\\(.*\\)\\s*\\{")) {
                 int closingBraceIndex = findClosingBrace(i);
                 parseFunction(i, closingBraceIndex);
-                if (line.startsWith("int main")) hasCStyleMain = true;
+                if (line.startsWith("fn main")) hasCStyleMain = true;
                 i = closingBraceIndex + 1;
             }
+            
             // MicroScript-style function
             else if (line.startsWith("function ")) {
                 int closingBraceIndex = findClosingBrace(i);
@@ -47,8 +48,7 @@ public class Parser {
             }
 
             else {
-// Execute top-level commands
-// Execute top-level commands
+                // Execute top-level commands
                 parseLine(line);
                 i++;
             }
@@ -66,14 +66,35 @@ public class Parser {
 
     private void parseFunction(int start, int end) {
         String header = lines.get(start).trim();
-        Matcher matcher = Pattern.compile("function\\s+(\\w+)\\(([^)]*)\\)\\s*(->\\s*(\\w+))?\\s*\\{").matcher(header);
-        if (!matcher.matches()) {
+        
+        // C-style function declaration regex
+        Pattern cStylePattern = Pattern.compile("^(String|Int32|Int64|Float32|Float64|fn)\\s+(\\w+)\\s*\\(([^)]*)\\)\\s*\\{");
+        Matcher cStyleMatcher = cStylePattern.matcher(header);
+    
+        // MicroScript-style function declaration regex
+        Pattern microScriptPattern = Pattern.compile("function\\s+(\\w+)\\(([^)]*)\\)\\s*(->\\s*(\\w+))?\\s*\\{");
+        Matcher microScriptMatcher = microScriptPattern.matcher(header);
+    
+        if (cStyleMatcher.matches()) {
+            String returnType = cStyleMatcher.group(1);
+            String name = cStyleMatcher.group(2);
+            String params = cStyleMatcher.group(3).trim();
+            parseFunctionBody(name, params, returnType, start, end);
+        }
+        
+        else if (microScriptMatcher.matches()) {
+            String name = microScriptMatcher.group(1);
+            String params = microScriptMatcher.group(2).trim();
+            String returnType = microScriptMatcher.group(4) != null ? microScriptMatcher.group(4).trim() : "void";
+            parseFunctionBody(name, params, returnType, start, end);
+        }
+        
+        else {
             throw new RuntimeException("Syntax error: Invalid function declaration.");
         }
+    }
     
-        String name = matcher.group(1);
-        String params = matcher.group(2).trim();
-        String returnType = matcher.group(4) != null ? matcher.group(4).trim() : "void";
+    private void parseFunctionBody(String name, String params, String returnType, int start, int end) {
         List<Parameter> parameters = new ArrayList<>();
         if (!params.isEmpty()) {
             for (String param : params.split("\\s*,\\s*")) {
@@ -88,10 +109,10 @@ public class Parser {
         for (int i = start + 1; i < end; i++) {
             body.add(lines.get(i).trim());
         }
-    
+
         environment.defineFunction(new Function(name, parameters, returnType, body));
     }
-
+        
     private int findClosingBrace(int start) {
         int openBraces = 0;
         for (int i = start; i < lines.size(); i++) {

@@ -1,0 +1,6 @@
+// "Hello, World!" program with function-like Rust-style using MicroScript
+// Copyright (c) 2025 Cyril John Magayaga
+
+fn main() {
+    console.write("Hello, World!");
+}
