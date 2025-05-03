@@ -15,13 +15,18 @@ import java.util.Arrays;
 public class MicroScript {
     // List of valid MicroScript file extensions
     private static final List<String> VALID_EXTENSIONS = Arrays.asList(
-        ".microscript", ".mus"
+        ".microscript", ".mus", ".micros"
     );
     
     public static void main(String[] args) {
+        // Delegate CLI commands to Cli.java
+        if (args.length == 0 || args[0].equals("--help") || args[0].equals("--version") || args[0].equals("about")) {
+            Cli.main(args);
+            return;
+        }
+
         if (args.length < 2 || !args[0].equals("run")) {
-            System.out.println("Usage: java com.microscript.MicroScript run <file.microscript>");
-            System.out.println("Supported extensions: .microscript, .mus, .μs, .📜");
+            Cli.printUsage();
             return;
         }
         
