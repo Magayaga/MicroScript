@@ -4,7 +4,7 @@
 
 ## Examples
 ### "Hello, World!" program
-The following shows how a **"Hello, World!"** program is written in MicroScript programming language:
+The following shows how a **"Hello, World!"** program is written in the MicroScript programming language:
 
 ```js
 // "Hello, World!" program using MicroScript
@@ -14,6 +14,15 @@ function main() {
 }
 
 main();
+```
+
+`fn` (new) and `function` (original) are functional programming. Then, new **"Hello, World!"** program is written in the MicroScript programming language:
+
+```rust
+// "Hello, World!" program using MicroScript
+fn main() {
+    console.write("Hello, World!");
+}
 ```
 
 ### Arithmetic expressions
@@ -100,6 +109,24 @@ function main() {
     console.write(username);
     console.write(number_e);
     console.write(number_speedOfSound);
+}
+
+main();
+```
+
+### Macros
+Macros are defined using the `#define` preprocessor directive, like Object-like Macros and Function-like Macros. It is similar to **C** and **C++** programming languages.
+
+```csharp
+// Macros
+#define NUMBER 9
+#define NAME "John!"
+#define SQUARE(x) (x * x)
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+// Main function
+function main() {
+    ...
 }
 
 main();
