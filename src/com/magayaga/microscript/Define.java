@@ -83,45 +83,40 @@ public class Define {
         do {
             replaced = false;
             for (Map.Entry<String, MacroDef> entry : functionMacros.entrySet()) {
-                String macroName = entry.getKey();
-                MacroDef def = entry.getValue();
-                // Regex: MACRO_NAME(arg1, arg2)
-                Pattern callPat = Pattern.compile("\\b" + macroName + "\\s*\\(([^()]*(?:\\([^()]*\\)[^()]*)*)\\)");
-                Matcher m = callPat.matcher(line);
-                StringBuffer sb = new StringBuffer();
-                boolean found = false;
-                while (m.find()) {
-                    found = true;
-                    String argStr = m.group(1);
+                String name = entry.getKey();
+                MacroDef macro = entry.getValue();
+                // Regex to match macro call: NAME(arg1, arg2, ...)
+                Pattern callPat = Pattern.compile("\\b" + name + "\\s*\\(([^()]*(?:\\([^()]*\\)[^()]*)*)\\)");
+                Matcher mCall = callPat.matcher(line);
+                if (mCall.find()) {
+                    String argStr = mCall.group(1);
                     List<String> args = splitArgs(argStr);
-                    String replacement;
-                    if (args.size() != def.params.size()) {
-                        // Error: wrong number of arguments
-                        replacement = "__MACRO_ARG_ERROR__(" + macroName + ", expected=" + def.params.size() + ", got=" + args.size() + ")";
+                    if (args.size() != macro.params.size()) {
+                        // Wrong number of arguments, mark as error
+                        line = mCall.replaceFirst("/*MACRO_ARG_ERROR*/");
                     } else {
-                        replacement = def.body;
-                        for (int i = 0; i < def.params.size(); i++) {
-                            replacement = replacement.replaceAll(
-                                "\\b" + Pattern.quote(def.params.get(i)) + "\\b",
-                                Matcher.quoteReplacement(args.get(i).trim())
-                            );
+                        String body = macro.body;
+                        for (int i = 0; i < macro.params.size(); i++) {
+                            // Replace all occurrences of param with arg (use word boundary)
+                            body = body.replaceAll("\\b" + Pattern.quote(macro.params.get(i)) + "\\b", Matcher.quoteReplacement(args.get(i)));
                         }
+                        // Wrap in parentheses only if not already
+                        if (!body.startsWith("(") || !body.endsWith(")")) {
+                            body = "(" + body + ")";
+                        }
+                        line = mCall.replaceFirst(Matcher.quoteReplacement(body));
                     }
-                    m.appendReplacement(sb, Matcher.quoteReplacement(replacement));
-                }
-                m.appendTail(sb);
-                if (found) {
                     replaced = true;
-                    line = sb.toString();
+                    break;
                 }
             }
-        } while (replaced); // Support nested macro expansions
+        } while (replaced);
 
-        // Expand object-like macros (replace as whole words)
+        // Expand object-like macros
         for (Map.Entry<String, String> entry : objectMacros.entrySet()) {
-            String macroName = entry.getKey();
-            String macroValue = entry.getValue();
-            line = line.replaceAll("\\b" + Pattern.quote(macroName) + "\\b", Matcher.quoteReplacement(macroValue));
+            String name = entry.getKey();
+            String value = entry.getValue();
+            line = line.replaceAll("\\b" + Pattern.quote(name) + "\\b", Matcher.quoteReplacement(value));
         }
         return line;
     }

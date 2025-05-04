@@ -117,7 +117,7 @@ main();
 ### Macros
 Macros are defined using the `#define` preprocessor directive, like Object-like Macros and Function-like Macros. It is similar to **C** and **C++** programming languages.
 
-```csharp
+```c
 // Macros
 #define NUMBER 9
 #define NAME "John!"

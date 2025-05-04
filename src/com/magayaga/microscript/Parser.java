@@ -127,6 +127,12 @@ public class Parser {
     }
 
     private void parseLine(String line) {
+        line = line.trim();
+        if (line.startsWith("import ")) {
+            String moduleName = line.substring(7).trim();
+            Import.importModule(moduleName, environment);
+            return;
+        }
         // Regex to match console.write statements
         Pattern pattern = Pattern.compile("console.write\\((.*)\\);");
         Matcher matcher = pattern.matcher(line);

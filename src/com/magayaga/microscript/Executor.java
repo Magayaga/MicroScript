@@ -367,6 +367,14 @@ public class Executor {
             return executeFunction(functionName, arguments);
         }
 
+        // Example for function call:
+        if (expression.startsWith("math::sqrt(")) {
+            String argStr = expression.substring("math::sqrt(".length(), expression.length() - 1);
+            double arg = Double.parseDouble(argStr);
+            Import.FunctionInterface sqrtFunc = (Import.FunctionInterface) environment.getVariable("math::sqrt");
+            return sqrtFunc.call(new Object[]{arg});
+        }
+
         // Check if the expression is a variable
         Object variableValue = environment.getVariable(expression);
         if (variableValue != null) {

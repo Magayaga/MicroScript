@@ -21,9 +21,43 @@ public class ExpressionEvaluator {
 
     public double parse() {
         nextChar();
-        double x = parseExpression();
+        double x = parseTernary();
         if (pos < expression.length()) throw new RuntimeException("Unexpected: " + (char) ch);
         return x;
+    }
+
+    // Support ternary operator
+    private double parseTernary() {
+        double condition = parseComparison();
+        if (eat('?')) {
+            double trueExpr = parseTernary();
+            if (!eat(':')) throw new RuntimeException("Expected ':' in ternary operator");
+            double falseExpr = parseTernary();
+            return (condition != 0.0) ? trueExpr : falseExpr;
+        }
+        return condition;
+    }
+
+    // Support comparison operators
+    private double parseComparison() {
+        double x = parseExpression();
+        for (;;) {
+            if (eat('>')) {
+                if (eat('=')) x = (x >= parseExpression()) ? 1.0 : 0.0;
+                else x = (x > parseExpression()) ? 1.0 : 0.0;
+            } else if (eat('<')) {
+                if (eat('=')) x = (x <= parseExpression()) ? 1.0 : 0.0;
+                else x = (x < parseExpression()) ? 1.0 : 0.0;
+            } else if (eat('=')) {
+                if (eat('=')) x = (x == parseExpression()) ? 1.0 : 0.0;
+                else throw new RuntimeException("Unexpected '='");
+            } else if (eat('!')) {
+                if (eat('=')) x = (x != parseExpression()) ? 1.0 : 0.0;
+                else throw new RuntimeException("Unexpected '!'");
+            } else {
+                return x;
+            }
+        }
     }
 
     private void nextChar() {
