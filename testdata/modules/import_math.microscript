@@ -1,0 +1,10 @@
+// Import math using MicroScript
+// Copyright (c) 2025 Cyril John Magayaga
+import math
+
+function main() {
+    console.write(math::PI);
+    console.write(math::sqrt(4));
+}
+
+main();

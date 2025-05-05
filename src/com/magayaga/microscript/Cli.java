@@ -12,7 +12,7 @@ public class Cli {
     private static final String GREEN = "\u001B[32;1m"; // Bold green
     private static final String BLUE = "\u001B[34;1m";  // Bold blue
 
-    private static final String VERSION = "MicroScript 0.1.0";
+    private static final String VERSION = "MicroScript v0.1.0";
     private static final String AUTHOR = "Cyril John Magayaga";
 
     public static void printUsage() {
@@ -21,7 +21,7 @@ public class Cli {
         System.out.println("  " + BLUE + "--help" + RESET + "        Show help information");
         System.out.println("  " + BLUE + "--version" + RESET + "     Show version information");
         System.out.println(GREEN + "Commands:" + RESET);
-        System.out.println("  " + BLUE + "run" + RESET + "           Run a MicroScript file");
+        System.out.println("  " + BLUE + "run" + RESET + "           Run a MicroScript source file");
         System.out.println("  " + BLUE + "about" + RESET + "         Show about information");
     }
 
@@ -47,14 +47,22 @@ public class Cli {
     public static void main(String[] args) {
         if (args.length == 0 || args[0].equals("--help")) {
             printHelp();
-        } else if (args[0].equals("--version")) {
+        }
+        
+        else if (args[0].equals("--version")) {
             printVersion();
-        } else if (args[0].equals("about")) {
+        }
+        
+        else if (args[0].equals("about")) {
             printAbout();
-        } else if (args[0].equals("run")) {
+        }
+        
+        else if (args[0].equals("run")) {
             System.out.println(BLUE + "Running MicroScript file..." + RESET);
             // You can delegate to MicroScript.main(args) here if needed
-        } else {
+        }
+        
+        else {
             System.out.println("Unknown command: " + args[0]);
             printUsage();
         }

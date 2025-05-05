@@ -42,7 +42,7 @@ public class MicroScript {
         }
         
         if (!hasValidExtension) {
-            System.out.println("Error: File must have a valid MicroScript extension (.microscript, .mus, .μs, or .📜)");
+            System.out.println("Error: File must have a valid MicroScript extension (.microscript, .mus, .micros)");
             System.out.println("The file '" + filePath + "' does not have a recognized MicroScript extension.");
             return;
         }
