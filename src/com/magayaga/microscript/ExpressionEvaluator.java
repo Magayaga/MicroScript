@@ -26,38 +26,64 @@ public class ExpressionEvaluator {
         return x;
     }
 
-    // Support ternary operator
     private double parseTernary() {
         double condition = parseComparison();
         if (eat('?')) {
-            double trueExpr = parseTernary();
-            if (!eat(':')) throw new RuntimeException("Expected ':' in ternary operator");
-            double falseExpr = parseTernary();
-            return (condition != 0.0) ? trueExpr : falseExpr;
+            double trueValue = parseExpression();  // Parse true expression
+            if (!eat(':')) {
+                throw new RuntimeException("Expected ':' in ternary operator");
+            }
+            double falseValue = parseExpression(); // Parse false expression
+            return condition != 0.0 ? trueValue : falseValue;
         }
         return condition;
     }
 
-    // Support comparison operators
+    // Support comparison operators and spaceship operator
     private double parseComparison() {
         double x = parseExpression();
-        for (;;) {
-            if (eat('>')) {
-                if (eat('=')) x = (x >= parseExpression()) ? 1.0 : 0.0;
-                else x = (x > parseExpression()) ? 1.0 : 0.0;
-            } else if (eat('<')) {
-                if (eat('=')) x = (x <= parseExpression()) ? 1.0 : 0.0;
-                else x = (x < parseExpression()) ? 1.0 : 0.0;
-            } else if (eat('=')) {
-                if (eat('=')) x = (x == parseExpression()) ? 1.0 : 0.0;
-                else throw new RuntimeException("Unexpected '='");
-            } else if (eat('!')) {
-                if (eat('=')) x = (x != parseExpression()) ? 1.0 : 0.0;
-                else throw new RuntimeException("Unexpected '!'");
-            } else {
-                return x;
+        
+        // Handle spaceship operator first
+        if (eat('<')) {
+            if (eat('=')) {
+                if (eat('>')) { // <=> operator
+                    double right = parseExpression();
+                    return Double.compare(x, right);
+                }
             }
         }
+        
+        // Reset position if it wasn't a spaceship operator
+        if (eat('<')) {
+            if (eat('=')) {
+                double right = parseExpression();
+                return x <= right ? 1.0 : 0.0;
+            }
+            double right = parseExpression();
+            return x < right ? 1.0 : 0.0;
+        } else if (eat('>')) {
+            if (eat('=')) {
+                double right = parseExpression();
+                return x >= right ? 1.0 : 0.0;
+            }
+            double right = parseExpression();
+            return x > right ? 1.0 : 0.0;
+        } else if (eat('=')) {
+            if (eat('=')) {
+                // Equal ==
+                double right = parseExpression();
+                return x == right ? 1.0 : 0.0;
+            }
+            throw new RuntimeException("Unexpected '='");
+        } else if (eat('!')) {
+            if (eat('=')) {
+                // Not equal !=
+                double right = parseExpression();
+                return x != right ? 1.0 : 0.0;
+            }
+            throw new RuntimeException("Unexpected '!'");
+        }
+        return x;
     }
 
     private void nextChar() {

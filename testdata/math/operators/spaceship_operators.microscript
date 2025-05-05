@@ -1,0 +1,13 @@
+// Spaceship operators using MicroScript
+// Copyright (c) 2025 Cyril John Magayaga
+
+function main() {
+    var numberA: Float64 = 1
+    var numberB: Float64 = 5
+
+    console.write(numberA <=> numberB);
+    console.write(numberB <=> numberB);
+    console.write(numberB <=> numberA);
+}
+
+main();
