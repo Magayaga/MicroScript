@@ -4,6 +4,9 @@ import math
 
 function main() {
     console.write(math::PI);
+    console.write(math::E);
+    console.write(math::TAU);
+    console.write(math::PHI);
     console.write(math::sqrt(4));
 }
 

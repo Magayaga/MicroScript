@@ -36,7 +36,9 @@ public class Import {
         @Override
         public void register(Environment env) {
             env.setVariable("math::PI", NativeMath.PI());
-            env.setVariable("math::E", Math.E);
+            env.setVariable("math::E", NativeMath.E());
+            env.setVariable("math::TAU", NativeMath.TAU());
+            env.setVariable("math::PHI", NativeMath.PHI());
             env.setVariable("math::sqrt", (Import.FunctionInterface) (args) -> NativeMath.sqrt(((Number)args[0]).doubleValue()));
             // Add more math functions as needed
         }

@@ -12,4 +12,7 @@ public class NativeMath {
     }
     public static native double sqrt(double value);
     public static native double PI();
+    public static native double E();
+    public static native double TAU();
+    public static native double PHI();
 }
