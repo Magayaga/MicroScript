@@ -27,3 +27,17 @@ JNIEXPORT jdouble JNICALL Java_com_magayaga_microscript_NativeMath_TAU(JNIEnv *e
 JNIEXPORT jdouble JNICALL Java_com_magayaga_microscript_NativeMath_PHI(JNIEnv *env, jclass cls) {
     return 1.61803398874989484820;
 }
+
+JNIEXPORT jdouble JNICALL Java_com_magayaga_microscript_NativeMath_square
+  (JNIEnv *env, jclass cls, jdouble value) {
+    return value * value;
+}
+
+JNIEXPORT jdouble JNICALL Java_com_magayaga_microscript_NativeMath_cbrt(JNIEnv *env, jclass cls, jdouble value) {
+    return cbrt(value);
+}
+
+JNIEXPORT jdouble JNICALL Java_com_magayaga_microscript_NativeMath_cube
+  (JNIEnv *env, jclass cls, jdouble value) {
+    return value * value * value;
+}

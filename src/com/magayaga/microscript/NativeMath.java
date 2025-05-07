@@ -11,8 +11,11 @@ public class NativeMath {
         System.loadLibrary("math"); // Loads math.dll or math.so
     }
     public static native double sqrt(double value);
+    public static native double cbrt(double value);
     public static native double PI();
     public static native double E();
     public static native double TAU();
     public static native double PHI();
+    public static native double square(double value);
+    public static native double cube(double value);
 }

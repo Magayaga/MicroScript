@@ -28,14 +28,28 @@ public class ExpressionEvaluator {
 
     private double parseTernary() {
         double condition = parseComparison();
-        if (eat('?')) {
-            double trueValue = parseExpression();  // Parse true expression
-            if (!eat(':')) {
-                throw new RuntimeException("Expected ':' in ternary operator");
+        skipWhitespace();
+        
+        // Look ahead for ? without consuming it
+        if (ch == '?') {
+            nextChar(); // consume ?
+            skipWhitespace();
+            
+            double trueValue = parseExpression();
+            skipWhitespace();
+            
+            if (ch != ':') {
+                throw new RuntimeException("Missing ':' in ternary expression at position " + pos);
             }
-            double falseValue = parseExpression(); // Parse false expression
-            return condition != 0.0 ? trueValue : falseValue;
+            nextChar(); // consume :
+            skipWhitespace();
+            
+            double falseValue = parseExpression();
+            
+            // Evaluate the ternary expression with proper condition checking
+            return Math.abs(condition) > 0.0001 ? trueValue : falseValue;
         }
+        
         return condition;
     }
 
@@ -91,7 +105,7 @@ public class ExpressionEvaluator {
     }
 
     private boolean eat(int charToEat) {
-        while (ch == ' ') nextChar();
+        skipWhitespace(); // Use skipWhitespace instead of while loop
         if (ch == charToEat) {
             nextChar();
             return true;
@@ -133,31 +147,77 @@ public class ExpressionEvaluator {
             x = Double.parseDouble(expression.substring(startPos, this.pos));
         }
         
-        else if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) { // functions or variables (now supports uppercase)
-            while ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) nextChar();
-            String func = expression.substring(startPos, this.pos);
+        else if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) { // functions or variables
+            StringBuilder identifier = new StringBuilder();
+            while ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) {
+                identifier.append((char)ch);
+                nextChar();
+            }
+            
+            // Look ahead for module operator ::
+            if (pos + 1 < expression.length() && 
+                expression.charAt(pos) == ':' && 
+                expression.charAt(pos + 1) == ':') {
+                
+                nextChar(); // consume first :
+                nextChar(); // consume second :
+                
+                // Parse function name after ::
+                StringBuilder functionName = new StringBuilder();
+                while ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) {
+                    functionName.append((char)ch);
+                    nextChar();
+                }
+                String fullName = identifier + "::" + functionName;
+                
+                if (eat('(')) {
+                    x = parseExpression();
+                    if (!eat(')')) {
+                        throw new RuntimeException("Missing closing parenthesis for module function " + fullName);
+                    }
+                    Object func = environment.getVariable(fullName.toString());
+                    if (func instanceof Import.FunctionInterface) {
+                        return ((Number)((Import.FunctionInterface)func).call(new Object[]{x})).doubleValue();
+                    }
+                    throw new RuntimeException("Unknown module function: " + fullName);
+                }
+                throw new RuntimeException("Expected ( after module function " + fullName);
+            }
+            
+            // Handle regular functions or variables
+            String func = identifier.toString();
             if (eat('(')) {
                 x = parseExpression();
-                eat(')');
+                if (!eat(')')) {
+                    throw new RuntimeException("Missing closing parenthesis for function " + func);
+                }
+                // Handle function call here
+                x = 0; // Replace with actual function handling
             }
             else {
                 Object varValue = environment.getVariable(func);
                 if (varValue instanceof Number) {
                     x = ((Number) varValue).doubleValue();
                 } else if (varValue != null) {
-                    throw new RuntimeException("Variable '" + func + "' is not a number.");
+                    throw new RuntimeException("Variable '" + func + "' is not a number");
                 } else {
-                    x = 0;
+                    throw new RuntimeException("Undefined variable: " + func);
                 }
             }
         }
-        
         else {
-            throw new RuntimeException("Unexpected: " + (char) ch);
+            throw new RuntimeException("Unexpected character: " + (char)ch);
         }
 
         if (eat('^')) x = Math.pow(x, parseFactor()); // exponentiation
-
         return x;
+    }
+
+    // Add this helper method to skip whitespace
+    private void skipWhitespace() {
+        while (pos < expression.length() && 
+               (ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n')) {
+            nextChar();
+        }
     }
 }
