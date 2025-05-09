@@ -43,6 +43,10 @@ public class Import {
             env.setVariable("math::square", (Import.FunctionInterface) (args) -> NativeMath.square(((Number)args[0]).doubleValue()));
             env.setVariable("math::cbrt", (Import.FunctionInterface) (args) -> NativeMath.cbrt(((Number)args[0]).doubleValue()));
             env.setVariable("math::cube", (Import.FunctionInterface) (args) -> NativeMath.cube(((Number)args[0]).doubleValue()));
+            env.setVariable("math::abs", (Import.FunctionInterface) (args) -> NativeMath.abs(((Number)args[0]).doubleValue()));
+            env.setVariable("math::log10", (Import.FunctionInterface) (args) -> NativeMath.log10(((Number)args[0]).doubleValue()));
+            env.setVariable("math::log2", (Import.FunctionInterface) (args) -> NativeMath.log2(((Number)args[0]).doubleValue()));
+            env.setVariable("math::log", (Import.FunctionInterface) (args) -> NativeMath.log(((Number)args[0]).doubleValue()));
             // Add more math functions as needed
         }
     }

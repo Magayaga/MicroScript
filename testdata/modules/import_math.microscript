@@ -11,6 +11,10 @@ function main() {
     console.write(math::square(4));
     console.write(math::cube(4));
     console.write(math::cbrt(27));
+    console.write(math::abs(-9));
+    console.write(math::log(100));
+    console.write(math::log2(100));
+    console.write(math::log10(100));
 }
 
 main();
