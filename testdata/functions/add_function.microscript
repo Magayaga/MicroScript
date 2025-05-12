@@ -1,0 +1,10 @@
+// Addition of number using MicroScript
+// Copyright (c) 2025 Cyril John Magayaga
+
+_function add = [](a: Float64, b: Float64) => { return a + b };
+
+function main() {
+    console.log(add(5, 3);
+}
+
+main();
