@@ -1,0 +1,18 @@
+// Higher-order function with Argument using MicroScript
+// Copyright (c) 2025 Cyril John Magayaga
+
+function greet(name: String) -> String {
+    return "Hello, {name}!";
+}
+
+function processUserInput(callback: (name: String) => String) -> Void {
+    var name: String = "Pablo"
+    console.log(callback(name));
+}
+
+function main() {
+    processUserInput(greet);
+    // Output: Hello, Pablo!
+}
+
+main();
