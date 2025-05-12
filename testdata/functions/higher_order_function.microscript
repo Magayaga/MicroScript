@@ -5,7 +5,7 @@ function greet(name: String) -> String {
     return "Hello, {name}!";
 }
 
-function processUserInput(callback: (name: String) => String) -> Void {
+function processUserInput(*callback: (name: String) => String) -> Void {
     var name: String = "Pablo"
     console.log(callback(name));
 }
