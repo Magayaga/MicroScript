@@ -6,7 +6,7 @@
 #define PI 3.14159
 #define ADD_NUMBER(a, b) (a + b)
 #define CUBE(number) (number * number * number)
-#define name "A"
+#define NAME "A"
 
 function main() {
     var a: Float64 = 5
@@ -16,7 +16,7 @@ function main() {
     console.write(PI * 2);
     console.write("This is result: {PI}");
     console.write(add);
-    console.write(cube);
+    console.write(NAME);
     console.write(add + cube);
 }
 

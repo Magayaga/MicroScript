@@ -12,7 +12,6 @@ function processUserInput(*callback: (name: String) => String) -> Void {
 
 function main() {
     processUserInput(greet);
-    // Output: Hello, Pablo!
 }
 
 main();
