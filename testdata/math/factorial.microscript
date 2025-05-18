@@ -1,0 +1,11 @@
+Update return keyword can be characters and mathematical expressions
+
+function factorial(n: Float64) {
+    return n < 2 ? 1 : n * factorial(n - 1);
+}
+
+function main() {
+    console.write(factorial(6));
+}
+
+main();

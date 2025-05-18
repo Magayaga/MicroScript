@@ -23,7 +23,9 @@ public class ExpressionEvaluator {
 
     public Object parse() {
         nextChar();
+        skipWhitespace(); // Start by skipping initial whitespace
         Object x = parseTernary();
+        skipWhitespace(); // Skip any trailing whitespace
         if (pos < expression.length()) throw new RuntimeException("Unexpected: " + (char) ch);
         return x;
     }
@@ -32,7 +34,7 @@ public class ExpressionEvaluator {
         Object condition = parseComparison();
         skipWhitespace();
         
-        // Look ahead for ? without consuming it
+        // Look for ternary operator ?
         if (ch == '?') {
             nextChar(); // consume ?
             skipWhitespace();
@@ -48,65 +50,99 @@ public class ExpressionEvaluator {
             
             Object falseValue = parseExpression();
             
-            // Evaluate the ternary expression with proper condition checking
-            double condValue = objectToDouble(condition);
-            return Math.abs(condValue) > 0.0001 ? trueValue : falseValue;
+            // Evaluate the ternary expression
+            boolean condResult = isTruthy(condition);
+            return condResult ? trueValue : falseValue;
         }
         
         return condition;
     }
 
+    // Check if an object is truthy (non-zero for numbers, true for booleans)
+    private boolean isTruthy(Object obj) {
+        if (obj instanceof Number) {
+            return Math.abs(((Number) obj).doubleValue()) > 0.0001;
+        } else if (obj instanceof Boolean) {
+            return (Boolean) obj;
+        }
+        return false;
+    }
+
     // Support comparison operators and spaceship operator
     private Object parseComparison() {
         Object x = parseExpression();
-        double xValue = objectToDouble(x);
+        skipWhitespace();
         
-        // Handle spaceship operator first
-        if (eat('<')) {
-            if (eat('=')) {
-                if (eat('>')) { // <=> operator
+        // Handle spaceship operator <=>
+        if (ch == '<') {
+            nextChar();
+            skipWhitespace();
+            if (ch == '=') {
+                nextChar();
+                skipWhitespace();
+                if (ch == '>') { // Found <=> operator
+                    nextChar();
+                    skipWhitespace();
                     Object rightObj = parseExpression();
+                    double left = objectToDouble(x);
                     double right = objectToDouble(rightObj);
-                    return (double)Double.compare(xValue, right);
+                    return (double)Double.compare(left, right);
+                } else {
+                    // It's <= operator
+                    Object rightObj = parseExpression();
+                    double left = objectToDouble(x);
+                    double right = objectToDouble(rightObj);
+                    return left <= right ? 1.0 : 0.0;
                 }
-            }
-        }
-        
-        // Reset position if it wasn't a spaceship operator
-        if (eat('<')) {
-            if (eat('=')) {
+            } else {
+                // It's < operator
                 Object rightObj = parseExpression();
+                double left = objectToDouble(x);
                 double right = objectToDouble(rightObj);
-                return xValue <= right ? 1.0 : 0.0;
+                return left < right ? 1.0 : 0.0;
             }
-            Object rightObj = parseExpression();
-            double right = objectToDouble(rightObj);
-            return xValue < right ? 1.0 : 0.0;
-        } else if (eat('>')) {
-            if (eat('=')) {
+        } else if (ch == '>') {
+            nextChar();
+            skipWhitespace();
+            if (ch == '=') {
+                nextChar();
+                skipWhitespace();
                 Object rightObj = parseExpression();
+                double left = objectToDouble(x);
                 double right = objectToDouble(rightObj);
-                return xValue >= right ? 1.0 : 0.0;
+                return left >= right ? 1.0 : 0.0;
+            } else {
+                Object rightObj = parseExpression();
+                double left = objectToDouble(x);
+                double right = objectToDouble(rightObj);
+                return left > right ? 1.0 : 0.0;
             }
-            Object rightObj = parseExpression();
-            double right = objectToDouble(rightObj);
-            return xValue > right ? 1.0 : 0.0;
-        } else if (eat('=')) {
-            if (eat('=')) {
+        } else if (ch == '=') {
+            nextChar();
+            skipWhitespace();
+            if (ch == '=') {
+                nextChar();
+                skipWhitespace();
                 // Equal ==
                 Object rightObj = parseExpression();
+                double left = objectToDouble(x);
                 double right = objectToDouble(rightObj);
-                return xValue == right ? 1.0 : 0.0;
+                return Math.abs(left - right) < 0.0001 ? 1.0 : 0.0;
             }
-            throw new RuntimeException("Unexpected '='");
-        } else if (eat('!')) {
-            if (eat('=')) {
+            throw new RuntimeException("Unexpected '=' at position " + pos + ". Did you mean '=='?");
+        } else if (ch == '!') {
+            nextChar();
+            skipWhitespace();
+            if (ch == '=') {
+                nextChar();
+                skipWhitespace();
                 // Not equal !=
                 Object rightObj = parseExpression();
+                double left = objectToDouble(x);
                 double right = objectToDouble(rightObj);
-                return xValue != right ? 1.0 : 0.0;
+                return Math.abs(left - right) >= 0.0001 ? 1.0 : 0.0;
             }
-            throw new RuntimeException("Unexpected '!'");
+            throw new RuntimeException("Unexpected '!' at position " + pos + ". Did you mean '!='?");
         }
         return x;
     }
@@ -116,9 +152,10 @@ public class ExpressionEvaluator {
     }
 
     private boolean eat(int charToEat) {
-        skipWhitespace(); // Use skipWhitespace instead of while loop
+        skipWhitespace();
         if (ch == charToEat) {
             nextChar();
+            skipWhitespace(); // Skip whitespace after consuming character
             return true;
         }
         return false;
@@ -126,19 +163,25 @@ public class ExpressionEvaluator {
 
     private Object parseExpression() {
         Object x = parseTerm();
-        double xValue;
+        skipWhitespace();
         for (;;) {
-            if (eat('+')) {
+            if (ch == '+') {
+                nextChar();
+                skipWhitespace();
                 Object termObj = parseTerm();
-                xValue = objectToDouble(x);
+                double xValue = objectToDouble(x);
                 double termValue = objectToDouble(termObj);
                 x = xValue + termValue; // addition
+                skipWhitespace();
             }
-            else if (eat('-')) {
+            else if (ch == '-') {
+                nextChar();
+                skipWhitespace();
                 Object termObj = parseTerm();
-                xValue = objectToDouble(x);
+                double xValue = objectToDouble(x);
                 double termValue = objectToDouble(termObj);
                 x = xValue - termValue; // subtraction
+                skipWhitespace();
             }
             else return x;
         }
@@ -146,19 +189,28 @@ public class ExpressionEvaluator {
 
     private Object parseTerm() {
         Object x = parseFactor();
-        double xValue;
+        skipWhitespace();
         for (;;) {
-            if (eat('*')) {
+            if (ch == '*') {
+                nextChar();
+                skipWhitespace();
                 Object factorObj = parseFactor();
-                xValue = objectToDouble(x);
+                double xValue = objectToDouble(x);
                 double factorValue = objectToDouble(factorObj);
                 x = xValue * factorValue; // multiplication
+                skipWhitespace();
             }
-            else if (eat('/')) {
+            else if (ch == '/') {
+                nextChar();
+                skipWhitespace();
                 Object factorObj = parseFactor();
-                xValue = objectToDouble(x);
+                double xValue = objectToDouble(x);
                 double factorValue = objectToDouble(factorObj);
+                if (Math.abs(factorValue) < 0.0001) {
+                    throw new RuntimeException("Division by zero");
+                }
                 x = xValue / factorValue; // division
+                skipWhitespace();
             }
             else return x;
         }
@@ -167,28 +219,47 @@ public class ExpressionEvaluator {
     private double objectToDouble(Object obj) {
         if (obj instanceof Number) {
             return ((Number) obj).doubleValue();
-        } else {
+        }
+        else if (obj instanceof Boolean) {
+            return ((Boolean) obj) ? 1.0 : 0.0;
+        }
+        else {
             throw new RuntimeException("Cannot convert " + obj + " to a number");
         }
     }
 
     private Object parseFactor() {
-        if (eat('+')) return parseFactor(); // unary plus
-        if (eat('-')) {
+        skipWhitespace();
+        if (ch == '+') {
+            nextChar(); // consume +
+            skipWhitespace();
+            return parseFactor(); // unary plus
+        }
+        if (ch == '-') {
+            nextChar(); // consume -
+            skipWhitespace();
             Object factor = parseFactor();
             return -objectToDouble(factor); // unary minus
         }
 
         Object x;
         int startPos = this.pos;
-        if (eat('(')) { // parentheses
+        if (ch == '(') { // parentheses
+            nextChar(); // consume (
+            skipWhitespace();
             x = parseExpression();
-            eat(')');
+            skipWhitespace();
+            if (ch != ')') {
+                throw new RuntimeException("Missing closing parenthesis at position " + pos);
+            }
+            nextChar(); // consume )
+            skipWhitespace();
         }
         
         else if ((ch >= '0' && ch <= '9') || ch == '.') { // numbers
             while ((ch >= '0' && ch <= '9') || ch == '.') nextChar();
             x = Double.parseDouble(expression.substring(startPos, this.pos));
+            skipWhitespace();
         }
         
         else if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '_') { // functions or variables
@@ -197,12 +268,14 @@ public class ExpressionEvaluator {
                 identifier.append((char)ch);
                 nextChar();
             }
+            skipWhitespace();
             
             // Look ahead for module operator ::
-            if (pos < expression.length() && ch == ':') {
+            if (ch == ':') {
                 nextChar(); // consume first :
                 if (ch == ':') {
                     nextChar(); // consume second :
+                    skipWhitespace();
                     
                     // Parse function name after ::
                     StringBuilder functionName = new StringBuilder();
@@ -211,18 +284,32 @@ public class ExpressionEvaluator {
                         functionName.append((char)ch);
                         nextChar();
                     }
+                    skipWhitespace();
                     String fullName = identifier + "::" + functionName;
                     
                     // Handle module function call with proper argument parsing
-                    if (eat('(')) {
+                    if (ch == '(') {
+                        nextChar(); // consume (
+                        skipWhitespace();
                         List<Object> args = new ArrayList<>();
-                        if (!eat(')')) {  // If not empty arguments
+                        if (ch != ')') {  // If not empty arguments
                             while (true) {
                                 args.add(parseExpression());
-                                if (eat(')')) break;
-                                if (!eat(',')) throw new RuntimeException("Expected ',' or ')' in argument list");
+                                skipWhitespace();
+                                if (ch == ')') {
+                                    nextChar(); // consume )
+                                    break;
+                                }
+                                if (ch != ',') {
+                                    throw new RuntimeException("Expected ',' or ')' in argument list at position " + pos);
+                                }
+                                nextChar(); // consume ,
+                                skipWhitespace();
                             }
+                        } else {
+                            nextChar(); // consume )
                         }
+                        skipWhitespace();
                         
                         Object func = environment.getVariable(fullName.toString());
                         if (func instanceof Import.FunctionInterface) {
@@ -234,7 +321,7 @@ public class ExpressionEvaluator {
                         }
                         throw new RuntimeException("Unknown module function: " + fullName);
                     }
-                    throw new RuntimeException("Expected ( after module function " + fullName);
+                    throw new RuntimeException("Expected '(' after module function " + fullName);
                 } else {
                     pos--; // Go back if second : is not found
                     ch = expression.charAt(pos);
@@ -243,17 +330,55 @@ public class ExpressionEvaluator {
             
             // Handle regular functions or variables
             String func = identifier.toString();
-            if (eat('(')) {
+            if (ch == '(') {
+                nextChar(); // consume (
+                skipWhitespace();
                 List<Object> args = new ArrayList<>();
-                if (!eat(')')) {  // If not empty arguments
+                if (ch != ')') {  // If not empty arguments
                     while (true) {
                         args.add(parseExpression());
-                        if (eat(')')) break;
-                        if (!eat(',')) throw new RuntimeException("Expected ',' or ')' in argument list");
+                        skipWhitespace();
+                        if (ch == ')') {
+                            nextChar(); // consume )
+                            break;
+                        }
+                        if (ch != ',') {
+                            throw new RuntimeException("Expected ',' or ')' in argument list at position " + pos);
+                        }
+                        nextChar(); // consume ,
+                        skipWhitespace();
                     }
+                } else {
+                    nextChar(); // consume )
                 }
-                // Handle function call here - replace with actual function handling
-                throw new RuntimeException("Function call not implemented for: " + func);
+                skipWhitespace();
+                
+                // Handle function call
+                Function function = environment.getFunction(func);
+                if (function != null) {
+                    // Convert arguments to strings for Executor.executeFunction
+                    String[] argStrings = new String[args.size()];
+                    for (int i = 0; i < args.size(); i++) {
+                        // Convert the evaluated expression to a string that can be re-evaluated
+                        Object arg = args.get(i);
+                        if (arg instanceof Double) {
+                            // Format doubles nicely (without unnecessary decimal places)
+                            double d = (Double) arg;
+                            if (d == Math.floor(d)) {
+                                argStrings[i] = String.format("%.0f", d);
+                            } else {
+                                argStrings[i] = arg.toString();
+                            }
+                        } else {
+                            argStrings[i] = arg.toString();
+                        }
+                    }
+                    
+                    Executor executor = new Executor(environment);
+                    return executor.executeFunction(func, argStrings);
+                } else {
+                    throw new RuntimeException("Function not found: " + func);
+                }
             }
             else {
                 Object varValue = environment.getVariable(func);
@@ -264,20 +389,28 @@ public class ExpressionEvaluator {
                 }
             }
         }
+        else if (ch == -1) {
+            throw new RuntimeException("Unexpected end of expression");
+        }
         else {
-            throw new RuntimeException("Unexpected character: " + (char)ch);
+            throw new RuntimeException("Unexpected character: '" + (char)ch + "' at position " + pos);
         }
 
-        if (eat('^')) {
+        // Handle exponentiation
+        skipWhitespace();
+        if (ch == '^') {
+            nextChar(); // consume ^
+            skipWhitespace();
             Object factorObj = parseFactor();
             double xValue = objectToDouble(x);
             double factorValue = objectToDouble(factorObj);
             x = Math.pow(xValue, factorValue); // exponentiation
+            skipWhitespace();
         }
         return x;
     }
 
-    // Add this helper method to skip whitespace
+    // Helper method to skip whitespace
     private void skipWhitespace() {
         while (pos < expression.length() && 
                (ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n')) {

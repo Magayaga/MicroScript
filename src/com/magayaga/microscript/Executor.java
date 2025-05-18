@@ -147,6 +147,11 @@ public class Executor {
                                 throw new RuntimeException("Type error: " + valueExpression + " is not a Float64.");
                             }
                             break;
+                        case "Char":
+                            if (!(value instanceof Character)) {
+                                throw new RuntimeException("Type error: " + valueExpression + " is not a Character.");
+                            }
+                            break;
                         default:
                             throw new RuntimeException("Unknown type annotation: " + typeAnnotation);
                     }
@@ -305,6 +310,11 @@ public class Executor {
                         throw new RuntimeException("Type error: Argument " + args[i] + " is not a Float64.");
                     }
                     break;
+                case "Char":
+                    if (!(value instanceof Character)) {
+                        throw new RuntimeException("Type error: Argument " + args[i] + " is not a Character.");
+                    }
+                    break;
                 default:
                     throw new RuntimeException("Unknown type annotation: " + expectedType);
             }
@@ -315,7 +325,9 @@ public class Executor {
         for (String line : function.getBody()) {
             if (line.trim().startsWith("return")) {
                 String returnExpression = line.substring(line.indexOf("return") + 6).trim().replace(";", "");
+                // Evaluate complex expressions in return statements
                 returnValue = new Executor(localEnv).evaluate(returnExpression);
+                
                 // Ensure the return value matches the expected return type
                 String expectedReturnType = function.getReturnType();
                 switch (expectedReturnType) {
@@ -337,7 +349,17 @@ public class Executor {
                         break;
                     case "Float64":
                         if (!(returnValue instanceof Double)) {
-                            throw new RuntimeException("Type error: Return value " + returnValue + " is not a Float64.");
+                            // Convert Integer to Double if necessary
+                            if (returnValue instanceof Integer) {
+                                returnValue = ((Integer) returnValue).doubleValue();
+                            } else {
+                                throw new RuntimeException("Type error: Return value " + returnValue + " is not a Float64.");
+                            }
+                        }
+                        break;
+                    case "Char":
+                        if (!(returnValue instanceof Character)) {
+                            throw new RuntimeException("Type error: Return value " + returnValue + " is not a Character.");
                         }
                         break;
                     default:
@@ -352,9 +374,19 @@ public class Executor {
     }
 
     public Object evaluate(String expression) {
+        // Skip empty expressions
+        if (expression == null || expression.trim().isEmpty()) {
+            return null;
+        }
+
         // Check if the expression is a string literal
         if (expression.startsWith("\"") && expression.endsWith("\"")) {
             return expression.substring(1, expression.length() - 1);
+        }
+
+        // Check if the expression is a character literal
+        if (expression.startsWith("'") && expression.endsWith("'") && expression.length() == 3) {
+            return expression.charAt(1);
         }
 
         // Check if the expression is a function call
@@ -363,7 +395,7 @@ public class Executor {
         if (matcher.matches()) {
             String functionName = matcher.group(1);
             String args = matcher.group(2).trim();
-            String[] arguments = args.isEmpty() ? new String[0] : args.split("\\s*,\\s*");
+            String[] arguments = args.isEmpty() ? new String[0] : splitArguments(args).toArray(new String[0]);
             return executeFunction(functionName, arguments);
         }
 
@@ -409,6 +441,28 @@ public class Executor {
             
             else {
                 throw new RuntimeException("Syntax error: " + expression + " is not a boolean.");
+            }
+        }
+
+        // Handle ternary expressions in the main evaluate method
+        int questionPos = expression.indexOf('?');
+        if (questionPos > 0) {
+            int colonPos = expression.indexOf(':', questionPos);
+            if (colonPos > questionPos) {
+                String condition = expression.substring(0, questionPos).trim();
+                String trueExpr = expression.substring(questionPos + 1, colonPos).trim();
+                String falseExpr = expression.substring(colonPos + 1).trim();
+                
+                Object condValue = evaluate(condition);
+                boolean condResult = false;
+                
+                if (condValue instanceof Number) {
+                    condResult = ((Number) condValue).doubleValue() != 0;
+                } else if (condValue instanceof Boolean) {
+                    condResult = (Boolean) condValue;
+                }
+                
+                return condResult ? evaluate(trueExpr) : evaluate(falseExpr);
             }
         }
 
