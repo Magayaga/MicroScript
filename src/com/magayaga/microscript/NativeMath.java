@@ -16,6 +16,7 @@ public class NativeMath {
     public static native double E();
     public static native double TAU();
     public static native double PHI();
+    public static native double SILVERRATIO();
     public static native double square(double value);
     public static native double cube(double value);
     public static native double abs(double value);

@@ -33,6 +33,11 @@ JNIEXPORT jdouble JNICALL Java_com_magayaga_microscript_NativeMath_PHI(JNIEnv *e
     return 1.61803398874989484820;
 }
 
+// Silver ratio
+JNIEXPORT jdouble JNICALL Java_com_magayaga_microscript_NativeMath_SILVERRATIO(JNIEnv *env, jclass cls) {
+    return 2.41421356237309504880;
+}
+
 // Square
 JNIEXPORT jdouble JNICALL Java_com_magayaga_microscript_NativeMath_square
   (JNIEnv *env, jclass cls, jdouble value) {

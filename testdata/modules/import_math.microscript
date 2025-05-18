@@ -7,6 +7,7 @@ function main() {
     console.write(math::E);
     console.write(math::TAU);
     console.write(math::PHI);
+    console.write(math::SILVERRATIO);
     console.write(math::sqrt(4));
     console.write(math::square(4));
     console.write(math::cube(4));

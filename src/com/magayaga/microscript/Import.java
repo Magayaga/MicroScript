@@ -41,6 +41,7 @@ public class Import {
             env.setVariable("math::E", NativeMath.E());
             env.setVariable("math::TAU", NativeMath.TAU());
             env.setVariable("math::PHI", NativeMath.PHI());
+            env.setVariable("math::SILVERRATIO", NativeMath.SILVERRATIO());
             env.setVariable("math::sqrt", (Import.FunctionInterface) (args) -> NativeMath.sqrt(((Number) args[0]).doubleValue()));
             env.setVariable("math::square", (Import.FunctionInterface) (args) -> NativeMath.square(((Number) args[0]).doubleValue()));
             env.setVariable("math::cbrt", (Import.FunctionInterface) (args) -> NativeMath.cbrt(((Number) args[0]).doubleValue()));
