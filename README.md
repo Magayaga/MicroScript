@@ -81,11 +81,11 @@ main();
 This executes the recursive `main` function, starting the program.
 
 ### Import modules and Libraries (Coming Soon)
-You need to use the `import` keyword along with the desired module name.
+You need to use the `import` keyword along with the desired module name like **Python** programming language.
 
 ```ts
 // Import modules
-import "math"
+import math
 
 // Main function
 function main() {
