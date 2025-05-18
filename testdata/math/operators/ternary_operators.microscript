@@ -6,6 +6,7 @@ function main() {
     var numberB: Float64 = 5
 
     console.write(numberA > numberB ? numberA : numberB);
+    console.write(numberA < numberB ? numberA : numberB);
 }
 
 main();

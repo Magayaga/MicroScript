@@ -24,10 +24,55 @@ public class ExpressionEvaluator {
     public Object parse() {
         nextChar();
         skipWhitespace(); // Start by skipping initial whitespace
-        Object x = parseTernary();
+        Object x = parseAssignment(); // Start with assignment (walrus operator)
         skipWhitespace(); // Skip any trailing whitespace
         if (pos < expression.length()) throw new RuntimeException("Unexpected: " + (char) ch);
         return x;
+    }
+
+    private Object parseAssignment() {
+        // Look ahead for walrus operator (:=)
+        int savedPos = pos;
+        int savedCh = ch;
+        
+        // Parse potential variable name
+        StringBuilder varName = new StringBuilder();
+        while ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || 
+               (ch >= '0' && ch <= '9') || ch == '_') {
+            varName.append((char)ch);
+            nextChar();
+        }
+        
+        skipWhitespace();
+        
+        // Check for := operator
+        boolean isWalrus = false;
+        if (ch == ':') {
+            nextChar();
+            if (ch == '=') {
+                isWalrus = true;
+                nextChar(); // consume =
+                skipWhitespace();
+            } else {
+                // Revert back if not a walrus operator
+                pos = savedPos;
+                ch = savedCh;
+            }
+        } else {
+            // Revert back if not an assignment
+            pos = savedPos;
+            ch = savedCh;
+        }
+        
+        if (isWalrus) {
+            // This is a walrus operator assignment
+            Object value = parseAssignment(); // Support chained assignments
+            // Store value in variable
+            environment.setVariable(varName.toString(), value);
+            return value; // Return the assigned value
+        }
+        
+        return parseTernary();
     }
 
     private Object parseTernary() {
@@ -212,6 +257,30 @@ public class ExpressionEvaluator {
                 x = xValue / factorValue; // division
                 skipWhitespace();
             }
+            else if (ch == '#') {
+                nextChar();
+                skipWhitespace();
+                Object factorObj = parseFactor();
+                double xValue = objectToDouble(x);
+                double factorValue = objectToDouble(factorObj);
+                if (Math.abs(factorValue) < 0.0001) {
+                    throw new RuntimeException("Division by zero");
+                }
+                x = Math.floor(xValue / factorValue); // floor division
+                skipWhitespace();
+            }
+            else if (ch == '%') {
+                nextChar();
+                skipWhitespace();
+                Object factorObj = parseFactor();
+                double xValue = objectToDouble(x);
+                double factorValue = objectToDouble(factorObj);
+                if (Math.abs(factorValue) < 0.0001) {
+                    throw new RuntimeException("Division by zero");
+                }
+                x = xValue % factorValue; // modulus
+                skipWhitespace();
+            }
             else return x;
         }
     }
@@ -247,7 +316,7 @@ public class ExpressionEvaluator {
         if (ch == '(') { // parentheses
             nextChar(); // consume (
             skipWhitespace();
-            x = parseExpression();
+            x = parseAssignment(); // Allow walrus operator inside parentheses
             skipWhitespace();
             if (ch != ')') {
                 throw new RuntimeException("Missing closing parenthesis at position " + pos);
@@ -294,7 +363,7 @@ public class ExpressionEvaluator {
                         List<Object> args = new ArrayList<>();
                         if (ch != ')') {  // If not empty arguments
                             while (true) {
-                                args.add(parseExpression());
+                                args.add(parseAssignment()); // Support walrus operator in arguments
                                 skipWhitespace();
                                 if (ch == ')') {
                                     nextChar(); // consume )
@@ -336,7 +405,7 @@ public class ExpressionEvaluator {
                 List<Object> args = new ArrayList<>();
                 if (ch != ')') {  // If not empty arguments
                     while (true) {
-                        args.add(parseExpression());
+                        args.add(parseAssignment()); // Support walrus operator in arguments
                         skipWhitespace();
                         if (ch == ')') {
                             nextChar(); // consume )
