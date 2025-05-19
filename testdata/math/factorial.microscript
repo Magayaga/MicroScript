@@ -1,11 +1,18 @@
-Update return keyword can be characters and mathematical expressions
+// Factorial function using MicroScript
+// Copyright (c) 2025 Cyril John Magayaga
 
-function factorial(n: Float64) {
+function factorial(n: Float64) -> Float64 {
     return n < 2 ? 1 : n * factorial(n - 1);
 }
 
 function main() {
+    // For example, 6! = 6 * 5 * 4 * 3 * 2 * 1
+    //                 = 6 * 5 * 4 * 6
+    //                 = 6 * 5 * 24
+    //                 = 6 * 120
+    //                 = 720
     console.write(factorial(6));
+    // Output: 720.0
 }
 
 main();
