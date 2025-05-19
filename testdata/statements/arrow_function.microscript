@@ -1,10 +1,12 @@
 // Arrow function shorter than function.
-let add = |Float64: a, Float64: b| => Float64 {a * b};
-let greet = |String: &| => console.write(“Hello!”);
+// Copyright (c) 2025 Cyril John Magayaga
+
+var add = |Float64: a, Float64: b| => Float64 {a + b};
+var calculateArea = |Float64: radius| => Float64 {3.14159 * radius * radius};
 
 function main() {
     console.write(add(9, 5));
-    greet();
+    console.write("Area of circle with radius 5 = {}", calculateArea(5));
 }
 
 main();

@@ -1,9 +1,9 @@
 impl mathematics {
-    fn sqrt(Float64: number) -> number {
+    function sqrt(number: Float64) -> Float64 {
         return number * 0.5;
     }
 
-    fn square(Float64: number) -> number {
+    function square(number: Float64) -> Float64 {
         return number * number;
     }
 }

@@ -46,6 +46,12 @@ public class Parser {
                 parseFunction(i, closingBraceIndex);
                 i = closingBraceIndex + 1;
             }
+            
+            // Arrow function
+            else if (line.contains("=>")) {
+                parseArrowFunction(line);
+                i++;
+            }
 
             else {
                 // Execute top-level commands
@@ -60,6 +66,95 @@ public class Parser {
             if (mainFunc != null) {
                 Executor executor = new Executor(environment);
                 executor.executeFunction("main", new String[0]);
+            }
+        }
+    }
+
+    private void parseArrowFunction(String line) {
+        // Format: var name = |Type: param1, Type: param2| => ReturnType {body} or expression;
+        Pattern pattern = Pattern.compile("var\\s+(\\w+)\\s*=\\s*\\|(.*?)\\|\\s*=>\\s*(\\w+)?\\s*\\{(.*?)\\};");
+        Matcher matcher = pattern.matcher(line);
+        
+        if (matcher.find()) {
+            String name = matcher.group(1).trim();
+            String paramString = matcher.group(2).trim();
+            String returnType = matcher.group(3);
+            String body = matcher.group(4).trim();
+            
+            // If return type is null, infer it from parameters or set to void
+            if (returnType == null || returnType.isEmpty()) {
+                returnType = "void";
+            }
+            
+            List<Parameter> parameters = new ArrayList<>();
+            
+            // Handle the empty parameter case |&|
+            if (paramString.equals("&")) {
+                // No parameters
+            } else {
+                // Parse parameters: Float64: a, String: b, etc.
+                String[] paramParts = paramString.split(",");
+                for (String param : paramParts) {
+                    String[] typeAndName = param.trim().split(":");
+                    if (typeAndName.length != 2) {
+                        throw new RuntimeException("Invalid parameter format in arrow function: " + param);
+                    }
+                    parameters.add(new Parameter(typeAndName[1].trim(), typeAndName[0].trim()));
+                }
+            }
+            
+            // Create ArrowFunction and define it in environment
+            ArrowFunction arrowFunction = new ArrowFunction(name, parameters, returnType, body, true);
+            environment.defineFunction(arrowFunction);
+            
+            // Also store the function as a variable
+            environment.setVariable(name, arrowFunction);
+        } else {
+            // Try to match expression body format: var name = |params| => expression;
+            Pattern exprPattern = Pattern.compile("var\\s+(\\w+)\\s*=\\s*\\|(.*?)\\|\\s*=>\\s*([^{][^;]*);");
+            Matcher exprMatcher = exprPattern.matcher(line);
+            
+            if (exprMatcher.find()) {
+                String name = exprMatcher.group(1).trim();
+                String paramString = exprMatcher.group(2).trim();
+                String expression = exprMatcher.group(3).trim();
+                
+                // Default return type (can be improved with type inference)
+                String returnType = "void";
+                
+                // Extract return type if it's specified in the paramString using regex
+                Pattern returnTypePattern = Pattern.compile("=>\\s*(\\w+)");
+                Matcher returnTypeMatcher = returnTypePattern.matcher(line);
+                if (returnTypeMatcher.find()) {
+                    returnType = returnTypeMatcher.group(1);
+                    paramString = paramString.replaceAll("=>\\s*\\w+", "").trim();
+                }
+                
+                List<Parameter> parameters = new ArrayList<>();
+                
+                // Handle the empty parameter case |&|
+                if (paramString.equals("&")) {
+                    // No parameters
+                } else {
+                    // Parse parameters: Float64: a, String: b, etc.
+                    String[] paramParts = paramString.split(",");
+                    for (String param : paramParts) {
+                        String[] typeAndName = param.trim().split(":");
+                        if (typeAndName.length != 2) {
+                            throw new RuntimeException("Invalid parameter format in arrow function: " + param);
+                        }
+                        parameters.add(new Parameter(typeAndName[1].trim(), typeAndName[0].trim()));
+                    }
+                }
+                
+                // Create ArrowFunction with expression body
+                ArrowFunction arrowFunction = new ArrowFunction(name, parameters, returnType, expression, true);
+                environment.defineFunction(arrowFunction);
+                
+                // Also store the function as a variable
+                environment.setVariable(name, arrowFunction);
+            } else {
+                throw new RuntimeException("Invalid arrow function syntax: " + line);
             }
         }
     }
