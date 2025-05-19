@@ -52,6 +52,15 @@ public class Parser {
                 parseArrowFunction(line);
                 i++;
             }
+            
+            // Handle if statement
+            else if (line.startsWith("if")) {
+                int closingBraceIndex = findClosingBrace(i);
+                parseIfStatement(i, closingBraceIndex);
+                // Move to the end of the if block
+                int endOfConditional = findEndOfConditionalBlock(i);
+                i = endOfConditional;
+            }
 
             else {
                 // Execute top-level commands
@@ -67,6 +76,52 @@ public class Parser {
                 Executor executor = new Executor(environment);
                 executor.executeFunction("main", new String[0]);
             }
+        }
+    }
+    
+    /**
+     * Find the end index of an entire conditional block (including any else/else if statements)
+     * @param startIndex The index of the line with the initial if statement
+     * @return The index after the entire conditional block
+     */
+    private int findEndOfConditionalBlock(int startIndex) {
+        int blockEndIndex = findClosingBrace(startIndex);
+        int currentIndex = blockEndIndex + 1;
+        
+        while (currentIndex < lines.size()) {
+            String line = lines.get(currentIndex).trim();
+            
+            if (line.startsWith("else if") || line.equals("else {") || line.equals("else{")) {
+                // Found an else if or else block
+                int nextBlockEnd = findClosingBrace(currentIndex);
+                if (nextBlockEnd == -1) {
+                    throw new RuntimeException("Missing closing brace for else if/else at line: " + (currentIndex + 1));
+                }
+                currentIndex = nextBlockEnd + 1;
+            } else {
+                // No more else if or else blocks
+                break;
+            }
+        }
+        
+        return currentIndex;
+    }
+    
+    /**
+     * Parse an if statement and its associated blocks
+     * @param startIndex The index of the line with the if statement
+     * @param endIndex The index of the closing brace of the if block
+     */
+    private void parseIfStatement(int startIndex, int endIndex) {
+        // We don't need to actually execute anything here, just validate syntax
+        String ifLine = lines.get(startIndex).trim();
+        
+        // Verify if statement syntax
+        Pattern ifPattern = Pattern.compile("if\\s*\\((.+?)\\)\\s*\\{");
+        Matcher ifMatcher = ifPattern.matcher(ifLine);
+        
+        if (!ifMatcher.find()) {
+            throw new RuntimeException("Invalid if statement syntax at line: " + (startIndex + 1));
         }
     }
 
@@ -228,6 +283,14 @@ public class Parser {
             Import.importModule(moduleName, environment);
             return;
         }
+        
+        // Handle if statements at top level
+        if (line.startsWith("if")) {
+            Executor executor = new Executor(environment);
+            Statements.processConditionalStatement(lines, lines.indexOf(line), executor);
+            return;
+        }
+        
         // Regex to match console.write statements
         Pattern pattern = Pattern.compile("console.write\\((.*)\\);");
         Matcher matcher = pattern.matcher(line);
