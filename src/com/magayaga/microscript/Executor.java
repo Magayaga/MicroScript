@@ -28,6 +28,15 @@ public class Executor {
                 return;
             }
 
+            // Handle if statements directly
+            if (expression.startsWith("if")) {
+                // If statements should be handled by Statements class
+                // but this is for direct execution from command line or REPL
+                Statements.processConditionalStatement(
+                    Arrays.asList(expression), 0, this);
+                return;
+            }
+
             if (expression.startsWith("console.write")) {
                 // Extract the content inside console.write()
                 Pattern pattern = Pattern.compile("console\\.write\\((.*)\\);");
@@ -209,6 +218,12 @@ public class Executor {
                 }
             }
             
+            else if (expression.startsWith("return")) {
+                // Handle return statements
+                // This will be processed in executeFunction
+                return;
+            }
+            
             else {
                 // Evaluate as a general expression (for variable assignments, etc.)
                 evaluate(expression);
@@ -322,8 +337,26 @@ public class Executor {
         }
 
         Object returnValue = null;
-        for (String line : function.getBody()) {
-            if (line.trim().startsWith("return")) {
+        List<String> body = function.getBody();
+        
+        // Process function body, handling control flow structures like if/else
+        for (int i = 0; i < body.size(); i++) {
+            String line = body.get(i).trim();
+            
+            // Skip empty lines and comments
+            if (line.isEmpty() || line.startsWith("//")) {
+                continue;
+            }
+            
+            // Handle if statements
+            if (line.startsWith("if")) {
+                // Use the Statements class to process the conditional
+                i = Statements.processConditionalStatement(body, i, new Executor(localEnv)) - 1;
+                continue;
+            }
+            
+            // Handle return statements
+            if (line.startsWith("return")) {
                 String returnExpression = line.substring(line.indexOf("return") + 6).trim().replace(";", "");
                 // Evaluate complex expressions in return statements
                 returnValue = new Executor(localEnv).evaluate(returnExpression);
@@ -367,6 +400,7 @@ public class Executor {
                 }
                 return returnValue; // Exit the function immediately after return
             }
+            
             new Executor(localEnv).execute(line);
         }
 

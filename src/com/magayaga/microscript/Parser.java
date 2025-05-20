@@ -80,7 +80,7 @@ public class Parser {
     }
     
     /**
-     * Find the end index of an entire conditional block (including any else/else if statements)
+     * Find the end index of an entire conditional block (including any elif/else statements)
      * @param startIndex The index of the line with the initial if statement
      * @return The index after the entire conditional block
      */
@@ -91,15 +91,15 @@ public class Parser {
         while (currentIndex < lines.size()) {
             String line = lines.get(currentIndex).trim();
             
-            if (line.startsWith("else if") || line.equals("else {") || line.equals("else{")) {
-                // Found an else if or else block
+            if (line.startsWith("elif") || line.equals("else {") || line.equals("else{")) {
+                // Found an elif or else block
                 int nextBlockEnd = findClosingBrace(currentIndex);
                 if (nextBlockEnd == -1) {
-                    throw new RuntimeException("Missing closing brace for else if/else at line: " + (currentIndex + 1));
+                    throw new RuntimeException("Missing closing brace for elif/else at line: " + (currentIndex + 1));
                 }
                 currentIndex = nextBlockEnd + 1;
             } else {
-                // No more else if or else blocks
+                // No more elif or else blocks
                 break;
             }
         }

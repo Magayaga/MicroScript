@@ -14,11 +14,11 @@ import java.util.regex.Pattern;
 public class Statements {
     
     /**
-     * Processes conditional statements (if/else if/else blocks) in the code
+     * Processes conditional statements (if/elif/else blocks) in the code
      * @param lines The list of code lines to process
      * @param startIndex The starting index of the if statement
      * @param executor The executor to execute code blocks with
-     * @return The index after the entire if/else if/else block
+     * @return The index after the entire if/elif/else block
      */
     public static int processConditionalStatement(List<String> lines, int startIndex, Executor executor) {
         int currentIndex = startIndex;
@@ -52,42 +52,42 @@ public class Statements {
                 return findEndOfConditionalStructure(lines, blockEndIndex + 1);
             }
             
-            // If condition is false, move to check for else if or else
+            // If condition is false, move to check for elif or else
             currentIndex = blockEndIndex + 1;
             
-            // Check for else if or else blocks
+            // Check for elif or else blocks
             while (currentIndex < lines.size()) {
                 line = currentIndex < lines.size() ? lines.get(currentIndex).trim() : "";
                 
-                // Handle 'else if' blocks
-                if (line.startsWith("else if")) {
-                    Pattern elseIfPattern = Pattern.compile("else\\s+if\\s*\\((.+?)\\)\\s*\\{");
-                    Matcher elseIfMatcher = elseIfPattern.matcher(line);
+                // Handle 'elif' blocks
+                if (line.startsWith("elif")) {
+                    Pattern elifPattern = Pattern.compile("elif\\s*\\((.+?)\\)\\s*\\{");
+                    Matcher elifMatcher = elifPattern.matcher(line);
                     
-                    if (!elseIfMatcher.find()) {
-                        throw new RuntimeException("Invalid else if statement syntax at line: " + line);
+                    if (!elifMatcher.find()) {
+                        throw new RuntimeException("Invalid elif statement syntax at line: " + line);
                     }
                     
-                    String elseIfCondition = elseIfMatcher.group(1).trim();
-                    Object elseIfResult = executor.evaluate(elseIfCondition);
-                    boolean elseIfValue = isTrue(elseIfResult);
+                    String elifCondition = elifMatcher.group(1).trim();
+                    Object elifResult = executor.evaluate(elifCondition);
+                    boolean elifValue = isTrue(elifResult);
                     
-                    // Find the end of the else if block
-                    int elseIfBlockEndIndex = findMatchingClosingBrace(lines, currentIndex);
+                    // Find the end of the elif block
+                    int elifBlockEndIndex = findMatchingClosingBrace(lines, currentIndex);
                     
-                    if (elseIfBlockEndIndex == -1) {
-                        throw new RuntimeException("Missing closing brace for else if statement at line: " + line);
+                    if (elifBlockEndIndex == -1) {
+                        throw new RuntimeException("Missing closing brace for elif statement at line: " + line);
                     }
                     
-                    // Execute the else if block if condition is true
-                    if (elseIfValue) {
-                        executeBlock(lines, currentIndex + 1, elseIfBlockEndIndex, executor);
+                    // Execute the elif block if condition is true
+                    if (elifValue) {
+                        executeBlock(lines, currentIndex + 1, elifBlockEndIndex, executor);
                         // Skip to the end of the entire conditional structure
-                        return findEndOfConditionalStructure(lines, elseIfBlockEndIndex + 1);
+                        return findEndOfConditionalStructure(lines, elifBlockEndIndex + 1);
                     }
                     
                     // Move to the next block
-                    currentIndex = elseIfBlockEndIndex + 1;
+                    currentIndex = elifBlockEndIndex + 1;
                 }
                 // Handle 'else' block
                 else if (line.startsWith("else {") || line.equals("else{")) {
@@ -105,7 +105,7 @@ public class Statements {
                     return elseBlockEndIndex + 1;
                 }
                 else {
-                    // No more else if or else blocks, return the current index
+                    // No more elif or else blocks, return the current index
                     return currentIndex;
                 }
             }
@@ -199,7 +199,7 @@ public class Statements {
     }
     
     /**
-     * Find the end of a conditional structure (after all else if and else blocks)
+     * Find the end of a conditional structure (after all elif and else blocks)
      * @param lines List of code lines
      * @param startIndex The index to start searching from
      * @return The index after the entire conditional structure
@@ -210,15 +210,15 @@ public class Statements {
         while (currentIndex < lines.size()) {
             String line = lines.get(currentIndex).trim();
             
-            if (line.startsWith("else if") || line.startsWith("else {") || line.equals("else{")) {
-                // Found else if or else block, skip it
+            if (line.startsWith("elif") || line.startsWith("else {") || line.equals("else{")) {
+                // Found elif or else block, skip it
                 int blockEndIndex = findMatchingClosingBrace(lines, currentIndex);
                 if (blockEndIndex == -1) {
-                    throw new RuntimeException("Missing closing brace for else if/else at line: " + line);
+                    throw new RuntimeException("Missing closing brace for elif/else at line: " + line);
                 }
                 currentIndex = blockEndIndex + 1;
             } else {
-                // No more else if or else blocks
+                // No more elif or else blocks
                 return currentIndex;
             }
         }
