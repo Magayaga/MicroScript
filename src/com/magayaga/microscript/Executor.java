@@ -286,125 +286,126 @@ public class Executor {
 
     public Object executeFunction(String functionName, String[] args) {
         Function function = environment.getFunction(functionName);
-        if (function == null) {
-            throw new RuntimeException("Function not found: " + functionName);
-        }
-
-        List<Parameter> parameters = function.getParameters();
-        if (args == null) {
-            args = new String[0]; // Ensure args is not null
-        }
-        if (parameters.size() != args.length) {
-            throw new RuntimeException("Argument count mismatch for function: " + functionName);
-        }
-
-        Environment localEnv = new Environment(environment);
-        for (int i = 0; i < args.length; i++) {
-            Object value = evaluate(args[i]);
-            String expectedType = parameters.get(i).getType();
-            // Ensure the value matches the expected type
-            switch (expectedType) {
-                case "String":
-                    if (!(value instanceof String)) {
-                        throw new RuntimeException("Type error: Argument " + args[i] + " is not a String.");
-                    }
-                    break;
-                case "Int32":
-                case "Int64":
-                    if (!(value instanceof Integer)) {
-                        throw new RuntimeException("Type error: Argument " + args[i] + " is not an Integer.");
-                    }
-                    break;
-                case "Float32":
-                    if (!(value instanceof Float)) {
-                        throw new RuntimeException("Type error: Argument " + args[i] + " is not a Float32.");
-                    }
-                    break;
-                case "Float64":
-                    if (!(value instanceof Double)) {
-                        throw new RuntimeException("Type error: Argument " + args[i] + " is not a Float64.");
-                    }
-                    break;
-                case "Char":
-                    if (!(value instanceof Character)) {
-                        throw new RuntimeException("Type error: Argument " + args[i] + " is not a Character.");
-                    }
-                    break;
-                default:
-                    throw new RuntimeException("Unknown type annotation: " + expectedType);
+        if (function != null) {
+            List<Parameter> parameters = function.getParameters();
+            if (args == null) {
+                args = new String[0]; // Ensure args is not null
             }
-            localEnv.setVariable(parameters.get(i).getName(), value);
-        }
+            if (parameters.size() != args.length) {
+                throw new RuntimeException("Argument count mismatch for function: " + functionName);
+            }
 
-        Object returnValue = null;
-        List<String> body = function.getBody();
-        
-        // Process function body, handling control flow structures like if/else
-        for (int i = 0; i < body.size(); i++) {
-            String line = body.get(i).trim();
-            
-            // Skip empty lines and comments
-            if (line.isEmpty() || line.startsWith("//")) {
-                continue;
-            }
-            
-            // Handle if statements
-            if (line.startsWith("if")) {
-                // Use the Statements class to process the conditional
-                i = Statements.processConditionalStatement(body, i, new Executor(localEnv)) - 1;
-                continue;
-            }
-            
-            // Handle return statements
-            if (line.startsWith("return")) {
-                String returnExpression = line.substring(line.indexOf("return") + 6).trim().replace(";", "");
-                // Evaluate complex expressions in return statements
-                returnValue = new Executor(localEnv).evaluate(returnExpression);
-                
-                // Ensure the return value matches the expected return type
-                String expectedReturnType = function.getReturnType();
-                switch (expectedReturnType) {
+            Environment localEnv = new Environment(environment);
+            for (int i = 0; i < args.length; i++) {
+                Object value = evaluate(args[i]);
+                String expectedType = parameters.get(i).getType();
+                // Ensure the value matches the expected type
+                switch (expectedType) {
                     case "String":
-                        if (!(returnValue instanceof String)) {
-                            throw new RuntimeException("Type error: Return value " + returnValue + " is not a String.");
+                        if (!(value instanceof String)) {
+                            throw new RuntimeException("Type error: Argument " + args[i] + " is not a String.");
                         }
                         break;
                     case "Int32":
                     case "Int64":
-                        if (!(returnValue instanceof Integer)) {
-                            throw new RuntimeException("Type error: Return value " + returnValue + " is not an Integer.");
+                        if (!(value instanceof Integer)) {
+                            throw new RuntimeException("Type error: Argument " + args[i] + " is not an Integer.");
                         }
                         break;
                     case "Float32":
-                        if (!(returnValue instanceof Float)) {
-                            throw new RuntimeException("Type error: Return value " + returnValue + " is not a Float32.");
+                        if (!(value instanceof Float)) {
+                            throw new RuntimeException("Type error: Argument " + args[i] + " is not a Float32.");
                         }
                         break;
                     case "Float64":
-                        if (!(returnValue instanceof Double)) {
-                            // Convert Integer to Double if necessary
-                            if (returnValue instanceof Integer) {
-                                returnValue = ((Integer) returnValue).doubleValue();
-                            } else {
-                                throw new RuntimeException("Type error: Return value " + returnValue + " is not a Float64.");
-                            }
+                        if (!(value instanceof Double)) {
+                            throw new RuntimeException("Type error: Argument " + args[i] + " is not a Float64.");
                         }
                         break;
                     case "Char":
-                        if (!(returnValue instanceof Character)) {
-                            throw new RuntimeException("Type error: Return value " + returnValue + " is not a Character.");
+                        if (!(value instanceof Character)) {
+                            throw new RuntimeException("Type error: Argument " + args[i] + " is not a Character.");
                         }
                         break;
                     default:
-                        throw new RuntimeException("Unknown return type annotation: " + expectedReturnType);
+                        throw new RuntimeException("Unknown type annotation: " + expectedType);
                 }
-                return returnValue; // Exit the function immediately after return
+                localEnv.setVariable(parameters.get(i).getName(), value);
             }
-            
-            new Executor(localEnv).execute(line);
-        }
 
-        return returnValue;
+            Object returnValue = null;
+            List<String> body = function.getBody();
+            // Process function body, handling control flow structures like if/else
+            for (int i = 0; i < body.size(); i++) {
+                String line = body.get(i).trim();
+                // Skip empty lines and comments
+                if (line.isEmpty() || line.startsWith("//")) {
+                    continue;
+                }
+                // Handle if statements
+                if (line.startsWith("if")) {
+                    // Use the Statements class to process the conditional
+                    i = Statements.processConditionalStatement(body, i, new Executor(localEnv)) - 1;
+                    continue;
+                }
+                // Handle return statements
+                if (line.startsWith("return")) {
+                    String returnExpression = line.substring(line.indexOf("return") + 6).trim().replace(";", "");
+                    // Evaluate complex expressions in return statements
+                    returnValue = new Executor(localEnv).evaluate(returnExpression);
+                    // Ensure the return value matches the expected return type
+                    String expectedReturnType = function.getReturnType();
+                    switch (expectedReturnType) {
+                        case "String":
+                            if (!(returnValue instanceof String)) {
+                                throw new RuntimeException("Type error: Return value " + returnValue + " is not a String.");
+                            }
+                            break;
+                        case "Int32":
+                        case "Int64":
+                            if (!(returnValue instanceof Integer)) {
+                                throw new RuntimeException("Type error: Return value " + returnValue + " is not an Integer.");
+                            }
+                            break;
+                        case "Float32":
+                            if (!(returnValue instanceof Float)) {
+                                throw new RuntimeException("Type error: Return value " + returnValue + " is not a Float32.");
+                            }
+                            break;
+                        case "Float64":
+                            if (!(returnValue instanceof Double)) {
+                                // Convert Integer to Double if necessary
+                                if (returnValue instanceof Integer) {
+                                    returnValue = ((Integer) returnValue).doubleValue();
+                                } else {
+                                    throw new RuntimeException("Type error: Return value " + returnValue + " is not a Float64.");
+                                }
+                            }
+                            break;
+                        case "Char":
+                            if (!(returnValue instanceof Character)) {
+                                throw new RuntimeException("Type error: Return value " + returnValue + " is not a Character.");
+                            }
+                            break;
+                        default:
+                            throw new RuntimeException("Unknown return type annotation: " + expectedReturnType);
+                    }
+                    return returnValue; // Exit the function immediately after return
+                }
+                new Executor(localEnv).execute(line);
+            }
+            return returnValue;
+        }
+        // Support for native functions (Import.FunctionInterface)
+        Object nativeFunc = environment.getVariable(functionName);
+        if (nativeFunc instanceof Import.FunctionInterface) {
+            Object[] evaluatedArgs = new Object[args == null ? 0 : args.length];
+            for (int i = 0; i < evaluatedArgs.length; i++) {
+                evaluatedArgs[i] = evaluate(args[i]);
+            }
+            return ((Import.FunctionInterface) nativeFunc).call(evaluatedArgs);
+        }
+        throw new RuntimeException("Function not found: " + functionName);
     }
 
     public Object evaluate(String expression) {

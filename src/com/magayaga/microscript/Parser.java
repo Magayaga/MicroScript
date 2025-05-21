@@ -31,6 +31,16 @@ public class Parser {
                 i++;
                 continue;
             }
+            // Skip multi-line comments /** ... */ and /* ... */
+            if (line.startsWith("/*")) {
+                // Find the end of the multi-line comment
+                while (i < lines.size() && !lines.get(i).contains("*/")) {
+                    i++;
+                }
+                // Skip the line with the closing */ as well
+                if (i < lines.size()) i++;
+                continue;
+            }
 
             // C-style function
             if (line.matches("^(String|Int32|Int64|Float32|Float64|fn)\\s+\\w+\\s*\\(.*\\)\\s*\\{")) {
@@ -298,6 +308,21 @@ public class Parser {
             String expression = matcher.group(1);
             Executor executor = new Executor(environment);
             executor.execute("console.write(" + expression + ")");
+            return;
+        }
+
+        // Regex to match io::print and io::println statements
+        Pattern ioPattern = Pattern.compile("io::(print|println)\\((.*)\\);");
+        Matcher ioMatcher = ioPattern.matcher(line);
+        if (ioMatcher.matches()) {
+            String functionName = "io::" + ioMatcher.group(1);
+            String args = ioMatcher.group(2).trim();
+            Executor executor = new Executor(environment);
+            if (args.isEmpty()) {
+                executor.executeFunction(functionName, new String[0]);
+            } else {
+                executor.executeFunction(functionName, args.split("\\s*,\\s*"));
+            }
             return;
         }
 

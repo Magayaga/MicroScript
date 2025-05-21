@@ -1,14 +1,14 @@
 /**
  * MicroScript — The programming language
  * Copyright (c) 2025 Cyril John Magayaga
- * 
+ *
  * Go implementation of HTTP server functionality
+ * It was originally written in Go programming language
  */
 package main
 
 import (
 	"C"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -34,9 +34,9 @@ type HttpServer struct {
 }
 
 type WebSocketEndpoint struct {
-	path       string
-	clients    map[string]*websocket.Conn
-	clientsMu  sync.Mutex
+	path      string
+	clients   map[string]*websocket.Conn
+	clientsMu sync.Mutex
 }
 
 type RequestContext struct {
@@ -47,12 +47,12 @@ type RequestContext struct {
 }
 
 var (
-	servers       = make(map[int]*HttpServer)
-	requests      = make(map[int]*RequestContext)
-	serverCounter = 0
-	requestCounter = 0
+	servers         = make(map[int]*HttpServer)
+	requests        = make(map[int]*RequestContext)
+	serverCounter   = 0
+	requestCounter  = 0
 	endpointCounter = 0
-	globalMu      sync.Mutex
+	globalMu        sync.Mutex
 )
 
 //export createServer
@@ -116,7 +116,7 @@ func stopServer(serverHandle int) {
 	if server.isRunning {
 		ctx, cancel := C.createContext(2 * time.Second)
 		defer cancel()
-		
+
 		server.server.Shutdown(ctx)
 		server.isRunning = false
 	}
@@ -141,6 +141,7 @@ func isRunning(serverHandle int) bool {
 }
 
 // Route handling
+//
 //export addRoute
 func addRoute(serverHandle int, method, path, handlerName *C.char) {
 	globalMu.Lock()
@@ -159,7 +160,7 @@ func addRoute(serverHandle int, method, path, handlerName *C.char) {
 		globalMu.Lock()
 		reqID := requestCounter
 		requestCounter++
-		
+
 		// Store request context
 		requests[reqID] = &RequestContext{
 			id:          reqID,
@@ -194,6 +195,7 @@ func removeRoute(serverHandle int, method, path *C.char) {
 }
 
 // Response utilities
+//
 //export setResponseHeader
 func setResponseHeader(requestId int, name, value *C.char) {
 	globalMu.Lock()
@@ -229,7 +231,7 @@ func sendResponse(requestId int, statusCode int, contentType, body *C.char) {
 
 	contentTypeStr := C.GoString(contentType)
 	bodyStr := C.GoString(body)
-	
+
 	request.headersSent = true
 	globalMu.Unlock()
 
@@ -253,7 +255,7 @@ func sendJsonResponse(requestId int, statusCode int, jsonBody *C.char) {
 	}
 
 	bodyStr := C.GoString(jsonBody)
-	
+
 	request.headersSent = true
 	globalMu.Unlock()
 
@@ -277,7 +279,7 @@ func sendFileResponse(requestId int, filePath *C.char) {
 	}
 
 	filePathStr := C.GoString(filePath)
-	
+
 	request.headersSent = true
 	globalMu.Unlock()
 
@@ -327,6 +329,7 @@ func getContentTypeFromExtension(ext string) string {
 }
 
 // Request information
+//
 //export getRequestPath
 func getRequestPath(requestId int) *C.char {
 	globalMu.Lock()
@@ -372,7 +375,7 @@ func getRequestBody(requestId int) *C.char {
 	globalMu.Lock()
 	request, exists := requests[requestId]
 	globalMu.Unlock()
-	
+
 	if !exists {
 		return C.CString("")
 	}
@@ -401,6 +404,7 @@ func getQueryParam(requestId int, paramName *C.char) *C.char {
 }
 
 // Middleware
+//
 //export useMiddleware
 func useMiddleware(serverHandle int, middlewareName *C.char) {
 	// This would normally register middleware with the server
@@ -408,6 +412,7 @@ func useMiddleware(serverHandle int, middlewareName *C.char) {
 }
 
 // Utility functions
+//
 //export urlEncode
 func urlEncode(input *C.char) *C.char {
 	// Implement URL encoding
@@ -447,17 +452,17 @@ func createWebSocketEndpoint(serverHandle int, path *C.char) int {
 	}
 
 	pathStr := C.GoString(path)
-	
+
 	endpointID := endpointCounter
 	endpointCounter++
-	
+
 	wsEndpoint := &WebSocketEndpoint{
 		path:    pathStr,
 		clients: make(map[string]*websocket.Conn),
 	}
-	
+
 	server.wsEndpoints[endpointID] = wsEndpoint
-	
+
 	// Handle WebSocket connections
 	server.router.HandleFunc(pathStr, func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
@@ -465,15 +470,15 @@ func createWebSocketEndpoint(serverHandle int, path *C.char) int {
 			log.Printf("WebSocket upgrade error: %v", err)
 			return
 		}
-		
+
 		// Generate client ID
 		clientID := uuid.New().String()
-		
+
 		// Store connection
 		wsEndpoint.clientsMu.Lock()
 		wsEndpoint.clients[clientID] = conn
 		wsEndpoint.clientsMu.Unlock()
-		
+
 		// Handle disconnect
 		defer func() {
 			conn.Close()
@@ -481,14 +486,14 @@ func createWebSocketEndpoint(serverHandle int, path *C.char) int {
 			delete(wsEndpoint.clients, clientID)
 			wsEndpoint.clientsMu.Unlock()
 		}()
-		
+
 		// Message handling loop
 		for {
 			messageType, message, err := conn.ReadMessage()
 			if err != nil {
 				break
 			}
-			
+
 			if messageType == websocket.TextMessage {
 				// Handle message (callbacks would be implemented here)
 				// For now, we'll just echo it back
@@ -496,7 +501,7 @@ func createWebSocketEndpoint(serverHandle int, path *C.char) int {
 			}
 		}
 	})
-	
+
 	return endpointID
 }
 
@@ -504,10 +509,10 @@ func createWebSocketEndpoint(serverHandle int, path *C.char) int {
 func sendWebSocketMessage(endpointHandle int, clientId, message *C.char) {
 	globalMu.Lock()
 	defer globalMu.Unlock()
-	
+
 	clientIdStr := C.GoString(clientId)
 	messageStr := C.GoString(message)
-	
+
 	// Find endpoint
 	for _, server := range servers {
 		if endpoint, exists := server.wsEndpoints[endpointHandle]; exists {
@@ -525,9 +530,9 @@ func sendWebSocketMessage(endpointHandle int, clientId, message *C.char) {
 func broadcastWebSocketMessage(endpointHandle int, message *C.char) {
 	globalMu.Lock()
 	defer globalMu.Unlock()
-	
+
 	messageStr := C.GoString(message)
-	
+
 	// Find endpoint
 	for _, server := range servers {
 		if endpoint, exists := server.wsEndpoints[endpointHandle]; exists {
@@ -545,9 +550,9 @@ func broadcastWebSocketMessage(endpointHandle int, message *C.char) {
 func closeWebSocketConnection(endpointHandle int, clientId *C.char) {
 	globalMu.Lock()
 	defer globalMu.Unlock()
-	
+
 	clientIdStr := C.GoString(clientId)
-	
+
 	// Find endpoint
 	for _, server := range servers {
 		if endpoint, exists := server.wsEndpoints[endpointHandle]; exists {
