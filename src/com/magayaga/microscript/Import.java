@@ -17,6 +17,7 @@ public class Import {
         // Register built-in modules
         modules.put("math", new MathModule());
         modules.put("io", new IoModule());
+        modules.put("http", new HttpModule());
     }
 
     public static void importModule(String name, Environment env) {
@@ -74,6 +75,160 @@ public class Import {
                 } else if (args[0] instanceof Number) {
                     NativeIo.println(((Number) args[0]).intValue());
                 }
+                return null;
+            });
+        }
+    }
+
+    // HTTP module
+    public static class HttpModule implements Module {
+        @Override
+        public void register(Environment env) {
+            // Server management
+            env.setVariable("http::createServer", (Import.FunctionInterface) (args) -> {
+                int port = ((Number) args[0]).intValue();
+                return NativeHttp.createServer(port);
+            });
+            
+            env.setVariable("http::stopServer", (Import.FunctionInterface) (args) -> {
+                int serverHandle = ((Number) args[0]).intValue();
+                NativeHttp.stopServer(serverHandle);
+                return null;
+            });
+            
+            env.setVariable("http::isRunning", (Import.FunctionInterface) (args) -> {
+                int serverHandle = ((Number) args[0]).intValue();
+                return NativeHttp.isRunning(serverHandle);
+            });
+            
+            // Route management
+            env.setVariable("http::addRoute", (Import.FunctionInterface) (args) -> {
+                int serverHandle = ((Number) args[0]).intValue();
+                String method = (String) args[1];
+                String path = (String) args[2];
+                String handlerName = (String) args[3];
+                NativeHttp.addRoute(serverHandle, method, path, handlerName);
+                return null;
+            });
+            
+            env.setVariable("http::removeRoute", (Import.FunctionInterface) (args) -> {
+                int serverHandle = ((Number) args[0]).intValue();
+                String method = (String) args[1];
+                String path = (String) args[2];
+                NativeHttp.removeRoute(serverHandle, method, path);
+                return null;
+            });
+            
+            // Response utilities
+            env.setVariable("http::setResponseHeader", (Import.FunctionInterface) (args) -> {
+                int requestId = ((Number) args[0]).intValue();
+                String name = (String) args[1];
+                String value = (String) args[2];
+                NativeHttp.setResponseHeader(requestId, name, value);
+                return null;
+            });
+            
+            env.setVariable("http::sendResponse", (Import.FunctionInterface) (args) -> {
+                int requestId = ((Number) args[0]).intValue();
+                int statusCode = ((Number) args[1]).intValue();
+                String contentType = (String) args[2];
+                String body = (String) args[3];
+                NativeHttp.sendResponse(requestId, statusCode, contentType, body);
+                return null;
+            });
+            
+            env.setVariable("http::sendJsonResponse", (Import.FunctionInterface) (args) -> {
+                int requestId = ((Number) args[0]).intValue();
+                int statusCode = ((Number) args[1]).intValue();
+                String jsonBody = (String) args[2];
+                NativeHttp.sendJsonResponse(requestId, statusCode, jsonBody);
+                return null;
+            });
+            
+            env.setVariable("http::sendFileResponse", (Import.FunctionInterface) (args) -> {
+                int requestId = ((Number) args[0]).intValue();
+                String filePath = (String) args[1];
+                NativeHttp.sendFileResponse(requestId, filePath);
+                return null;
+            });
+            
+            // Request information
+            env.setVariable("http::getRequestPath", (Import.FunctionInterface) (args) -> {
+                int requestId = ((Number) args[0]).intValue();
+                return NativeHttp.getRequestPath(requestId);
+            });
+            
+            env.setVariable("http::getRequestMethod", (Import.FunctionInterface) (args) -> {
+                int requestId = ((Number) args[0]).intValue();
+                return NativeHttp.getRequestMethod(requestId);
+            });
+            
+            env.setVariable("http::getRequestHeader", (Import.FunctionInterface) (args) -> {
+                int requestId = ((Number) args[0]).intValue();
+                String headerName = (String) args[1];
+                return NativeHttp.getRequestHeader(requestId, headerName);
+            });
+            
+            env.setVariable("http::getRequestBody", (Import.FunctionInterface) (args) -> {
+                int requestId = ((Number) args[0]).intValue();
+                return NativeHttp.getRequestBody(requestId);
+            });
+            
+            env.setVariable("http::getQueryParam", (Import.FunctionInterface) (args) -> {
+                int requestId = ((Number) args[0]).intValue();
+                String paramName = (String) args[1];
+                return NativeHttp.getQueryParam(requestId, paramName);
+            });
+            
+            // Middleware
+            env.setVariable("http::useMiddleware", (Import.FunctionInterface) (args) -> {
+                int serverHandle = ((Number) args[0]).intValue();
+                String middlewareName = (String) args[1];
+                NativeHttp.useMiddleware(serverHandle, middlewareName);
+                return null;
+            });
+            
+            // Utility functions
+            env.setVariable("http::urlEncode", (Import.FunctionInterface) (args) -> {
+                String input = (String) args[0];
+                return NativeHttp.urlEncode(input);
+            });
+            
+            env.setVariable("http::urlDecode", (Import.FunctionInterface) (args) -> {
+                String input = (String) args[0];
+                return NativeHttp.urlDecode(input);
+            });
+            
+            env.setVariable("http::generateUuid", (Import.FunctionInterface) (args) -> {
+                return NativeHttp.generateUuid();
+            });
+            
+            // WebSocket support
+            env.setVariable("http::createWebSocketEndpoint", (Import.FunctionInterface) (args) -> {
+                int serverHandle = ((Number) args[0]).intValue();
+                String path = (String) args[1];
+                return NativeHttp.createWebSocketEndpoint(serverHandle, path);
+            });
+            
+            env.setVariable("http::sendWebSocketMessage", (Import.FunctionInterface) (args) -> {
+                int endpointHandle = ((Number) args[0]).intValue();
+                String clientId = (String) args[1];
+                String message = (String) args[2];
+                NativeHttp.sendWebSocketMessage(endpointHandle, clientId, message);
+                return null;
+            });
+            
+            env.setVariable("http::broadcastWebSocketMessage", (Import.FunctionInterface) (args) -> {
+                int endpointHandle = ((Number) args[0]).intValue();
+                String message = (String) args[1];
+                NativeHttp.broadcastWebSocketMessage(endpointHandle, message);
+                return null;
+            });
+            
+            env.setVariable("http::closeWebSocketConnection", (Import.FunctionInterface) (args) -> {
+                int endpointHandle = ((Number) args[0]).intValue();
+                String clientId = (String) args[1];
+                NativeHttp.closeWebSocketConnection(endpointHandle, clientId);
                 return null;
             });
         }
