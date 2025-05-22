@@ -1,0 +1,7 @@
+import io
+
+function main() {
+    io::println("Hello, World!");
+}
+
+main();

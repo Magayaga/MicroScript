@@ -1,0 +1,21 @@
+function main() {
+    var x: Float64 = 5
+    var y: Float64 = 5
+
+    if (x > y)
+    {
+        console.write("{x} is greater than {y}");
+    }
+
+    elif (x < y)
+    {
+        console.write("{x} is less than {y}");
+    }
+
+    else
+    {
+        console.write("{x} is equal to {y}");
+    }
+}
+
+main();

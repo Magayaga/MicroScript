@@ -22,12 +22,14 @@ public class Statements {
      */
     public static int processConditionalStatement(List<String> lines, int startIndex, Executor executor) {
         int currentIndex = startIndex;
-        String line = lines.get(currentIndex).trim();
+        Object[] lineAndIndex = getNonEmptyNonCommentLineWithIndex(lines, currentIndex);
+        String line = (String) lineAndIndex[0];
+        currentIndex = (int) lineAndIndex[1];
         
         // Process the 'if' statement
-        if (line.startsWith("if")) {
+        if (line != null && line.startsWith("if")) {
             // Extract condition from if statement
-            Pattern ifPattern = Pattern.compile("if\\s*\\((.+?)\\)\\s*\\{");
+            Pattern ifPattern = Pattern.compile("if\\s*\\((.+?)\\)\\s*(\\{)?");
             Matcher ifMatcher = ifPattern.matcher(line);
             
             if (!ifMatcher.find()) {
@@ -38,16 +40,24 @@ public class Statements {
             Object conditionResult = executor.evaluate(condition);
             boolean conditionValue = isTrue(conditionResult);
             
-            // Find the end of the if block
-            int blockEndIndex = findMatchingClosingBrace(lines, currentIndex);
+            // Find the opening brace for the if block
+            int blockStartIndex = currentIndex;
+            if (ifMatcher.group(2) == null) {
+                blockStartIndex = findNextOpeningBrace(lines, currentIndex + 1);
+                if (blockStartIndex == -1) {
+                    throw new RuntimeException("Missing opening brace for if statement at or after line: " + line);
+                }
+            }
             
+            // Find the end of the if block
+            int blockEndIndex = findMatchingClosingBrace(lines, blockStartIndex);
             if (blockEndIndex == -1) {
                 throw new RuntimeException("Missing closing brace for if statement starting at line: " + line);
             }
             
             // Execute the if block if condition is true
             if (conditionValue) {
-                executeBlock(lines, currentIndex + 1, blockEndIndex, executor);
+                executeBlock(lines, blockStartIndex + 1, blockEndIndex, executor);
                 // Skip to the end of the entire conditional structure
                 return findEndOfConditionalStructure(lines, blockEndIndex + 1);
             }
@@ -57,11 +67,14 @@ public class Statements {
             
             // Check for elif or else blocks
             while (currentIndex < lines.size()) {
-                line = currentIndex < lines.size() ? lines.get(currentIndex).trim() : "";
+                lineAndIndex = getNonEmptyNonCommentLineWithIndex(lines, currentIndex);
+                line = (String) lineAndIndex[0];
+                currentIndex = (int) lineAndIndex[1];
+                if (line == null) break;
                 
                 // Handle 'elif' blocks
                 if (line.startsWith("elif")) {
-                    Pattern elifPattern = Pattern.compile("elif\\s*\\((.+?)\\)\\s*\\{");
+                    Pattern elifPattern = Pattern.compile("elif\\s*\\((.+?)\\)\\s*(\\{)?");
                     Matcher elifMatcher = elifPattern.matcher(line);
                     
                     if (!elifMatcher.find()) {
@@ -72,16 +85,24 @@ public class Statements {
                     Object elifResult = executor.evaluate(elifCondition);
                     boolean elifValue = isTrue(elifResult);
                     
-                    // Find the end of the elif block
-                    int elifBlockEndIndex = findMatchingClosingBrace(lines, currentIndex);
+                    // Find the opening brace for the elif block
+                    int elifBlockStartIndex = currentIndex;
+                    if (elifMatcher.group(2) == null) {
+                        elifBlockStartIndex = findNextOpeningBrace(lines, currentIndex + 1);
+                        if (elifBlockStartIndex == -1) {
+                            throw new RuntimeException("Missing opening brace for elif statement at or after line: " + line);
+                        }
+                    }
                     
+                    // Find the end of the elif block
+                    int elifBlockEndIndex = findMatchingClosingBrace(lines, elifBlockStartIndex);
                     if (elifBlockEndIndex == -1) {
                         throw new RuntimeException("Missing closing brace for elif statement at line: " + line);
                     }
                     
                     // Execute the elif block if condition is true
                     if (elifValue) {
-                        executeBlock(lines, currentIndex + 1, elifBlockEndIndex, executor);
+                        executeBlock(lines, elifBlockStartIndex + 1, elifBlockEndIndex, executor);
                         // Skip to the end of the entire conditional structure
                         return findEndOfConditionalStructure(lines, elifBlockEndIndex + 1);
                     }
@@ -90,17 +111,22 @@ public class Statements {
                     currentIndex = elifBlockEndIndex + 1;
                 }
                 // Handle 'else' block
-                else if (line.startsWith("else {") || line.equals("else{")) {
+                else if (line.startsWith("else")) {
+                    // Find the opening brace for the else block
+                    int elseBlockStartIndex = currentIndex;
+                    if (!line.contains("{")) {
+                        elseBlockStartIndex = findNextOpeningBrace(lines, currentIndex + 1);
+                        if (elseBlockStartIndex == -1) {
+                            throw new RuntimeException("Missing opening brace for else statement at or after line: " + line);
+                        }
+                    }
                     // Find the end of the else block
-                    int elseBlockEndIndex = findMatchingClosingBrace(lines, currentIndex);
-                    
+                    int elseBlockEndIndex = findMatchingClosingBrace(lines, elseBlockStartIndex);
                     if (elseBlockEndIndex == -1) {
                         throw new RuntimeException("Missing closing brace for else statement at line: " + line);
                     }
-                    
                     // Execute the else block
-                    executeBlock(lines, currentIndex + 1, elseBlockEndIndex, executor);
-                    
+                    executeBlock(lines, elseBlockStartIndex + 1, elseBlockEndIndex, executor);
                     // Return the index after the else block
                     return elseBlockEndIndex + 1;
                 }
@@ -130,25 +156,49 @@ public class Statements {
         
         // Count opening brace on the first line
         String firstLine = lines.get(openingBraceLineIndex).trim();
-        for (char c : firstLine.toCharArray()) {
-            if (c == '{') {
-                braceCount++;
-                openingBraceFound = true;
-            } else if (c == '}') {
-                braceCount--;
-            }
-        }
         
-        // If opening brace wasn't found on the first line, return error
-        if (!openingBraceFound) {
+        // Check for opening brace and keep track of its position
+        int openingBracePos = firstLine.indexOf('{');
+        if (openingBracePos != -1) {
+            braceCount = 1;
+            openingBraceFound = true;
+            
+            // Check if there are any closing braces on the same line after the opening brace
+            for (int i = openingBracePos + 1; i < firstLine.length(); i++) {
+                if (firstLine.charAt(i) == '{') {
+                    braceCount++;
+                } else if (firstLine.charAt(i) == '}') {
+                    braceCount--;
+                    if (braceCount == 0) {
+                        return openingBraceLineIndex; // The block starts and ends on the same line
+                    }
+                }
+            }
+        } else {
+            // If opening brace wasn't found on the first line, return error
             throw new RuntimeException("No opening brace found at line index: " + openingBraceLineIndex);
         }
         
         // Process subsequent lines
         for (int i = openingBraceLineIndex + 1; i < lines.size(); i++) {
-            String line = lines.get(i).trim();
+            String line = lines.get(i);
             
-            for (char c : line.toCharArray()) {
+            // Skip comments
+            if (line.trim().startsWith("//")) {
+                continue;
+            }
+            
+            // Handle multi-line comments
+            if (line.trim().startsWith("/*")) {
+                while (i < lines.size() && !lines.get(i).contains("*/")) {
+                    i++;
+                }
+                continue;
+            }
+            
+            // Count braces
+            for (int j = 0; j < line.length(); j++) {
+                char c = line.charAt(j);
                 if (c == '{') {
                     braceCount++;
                 } else if (c == '}') {
@@ -180,20 +230,61 @@ public class Statements {
                 continue;
             }
             
+            // Skip comments
+            if (line.startsWith("//") || line.startsWith("/*")) {
+                // Skip multi-line comments
+                if (line.startsWith("/*") && !line.contains("*/")) {
+                    while (i < endIndex && !lines.get(i).contains("*/")) {
+                        i++;
+                    }
+                }
+                continue;
+            }
+            
             // Process nested if statements
             if (line.startsWith("if")) {
                 i = processConditionalStatement(lines, i, executor) - 1; // -1 because the loop will increment i
                 continue;
             }
             
-            // Check for return statement
+            // Handle variable declaration (var ...)
+            if (line.startsWith("var ")) {
+                executor.execute(line);
+                continue;
+            }
+            
+            // Handle boolean declaration
+            if (line.startsWith("bool ")) {
+                executor.execute(line);
+                continue;
+            }
+            
+            // Handle return statement
             if (line.startsWith("return")) {
-                // The function processing will handle returns
                 executor.execute(line);
                 return; // Exit block execution on return
             }
             
-            // Execute the line
+            // Handle console.write()
+            if (line.startsWith("console.write")) {
+                executor.execute(line);
+                continue;
+            }
+            
+            // Handle assignment statements
+            if (line.contains("=") && !line.contains("==") && !line.contains("!=") && 
+                !line.contains("<=") && !line.contains(">=")) {
+                executor.execute(line);
+                continue;
+            }
+            
+            // Handle function calls
+            if (line.contains("(") && line.contains(")") && line.endsWith(";")) {
+                executor.execute(line);
+                continue;
+            }
+            
+            // Execute any other line (for assignments, function calls, etc.)
             executor.execute(line);
         }
     }
@@ -208,11 +299,26 @@ public class Statements {
         int currentIndex = startIndex;
         
         while (currentIndex < lines.size()) {
-            String line = lines.get(currentIndex).trim();
+            Object[] lineAndIndex = getNonEmptyNonCommentLineWithIndex(lines, currentIndex);
+            if (lineAndIndex[0] == null) break;
             
-            if (line.startsWith("elif") || line.startsWith("else {") || line.equals("else{")) {
+            String line = (String) lineAndIndex[0];
+            currentIndex = (int) lineAndIndex[1];
+            
+            // More comprehensive check for elif/else patterns
+            if (line.startsWith("elif") || 
+                line.startsWith("else") && (line.contains("{") || !line.contains(";"))) {
+                
                 // Found elif or else block, skip it
-                int blockEndIndex = findMatchingClosingBrace(lines, currentIndex);
+                int blockStartIndex = currentIndex;
+                if (!line.contains("{")) {
+                    blockStartIndex = findNextOpeningBrace(lines, currentIndex + 1);
+                    if (blockStartIndex == -1) {
+                        throw new RuntimeException("Missing opening brace for elif/else at line: " + line);
+                    }
+                }
+                
+                int blockEndIndex = findMatchingClosingBrace(lines, blockStartIndex);
                 if (blockEndIndex == -1) {
                     throw new RuntimeException("Missing closing brace for elif/else at line: " + line);
                 }
@@ -253,5 +359,28 @@ public class Statements {
         
         // For any other object, consider it true
         return true;
+    }
+
+    // Helper: Get the next non-empty, non-comment line at or after index, returns [line, index] or [null, -1]
+    private static Object[] getNonEmptyNonCommentLineWithIndex(List<String> lines, int index) {
+        while (index < lines.size()) {
+            String line = lines.get(index).trim();
+            if (!line.isEmpty() && !line.startsWith("//")) {
+                return new Object[]{line, index};
+            }
+            index++;
+        }
+        return new Object[]{null, -1};
+    }
+
+    // Helper: Find the next line with an opening brace '{' (skipping comments/empty lines)
+    private static int findNextOpeningBrace(List<String> lines, int startIndex) {
+        for (int i = startIndex; i < lines.size(); i++) {
+            String line = lines.get(i).trim();
+            if (!line.isEmpty() && !line.startsWith("//") && line.contains("{")) {
+                return i;
+            }
+        }
+        return -1;
     }
 }

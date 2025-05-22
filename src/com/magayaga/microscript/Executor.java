@@ -344,8 +344,17 @@ public class Executor {
                 }
                 // Handle if statements
                 if (line.startsWith("if")) {
+                    // Create an executor with the local environment to ensure variables are accessible
+                    Executor localExecutor = new Executor(localEnv);
                     // Use the Statements class to process the conditional
-                    i = Statements.processConditionalStatement(body, i, new Executor(localEnv)) - 1;
+                    int newIndex = Statements.processConditionalStatement(body, i, localExecutor);
+                    
+                    // Important: Make sure we're not stuck in an infinite loop
+                    if (newIndex <= i) {
+                        throw new RuntimeException("Error processing if statement at line: " + line);
+                    }
+                    
+                    i = newIndex - 1; // -1 because the loop will increment i
                     continue;
                 }
                 // Handle return statements
@@ -392,6 +401,7 @@ public class Executor {
                     }
                     return returnValue; // Exit the function immediately after return
                 }
+                // Use a local executor to ensure variable modifications are retained
                 new Executor(localEnv).execute(line);
             }
             return returnValue;

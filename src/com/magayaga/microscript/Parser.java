@@ -63,13 +63,11 @@ public class Parser {
                 i++;
             }
             
-            // Handle if statement
+            // Handle if/elif/else chain as a single block
             else if (line.startsWith("if")) {
-                int closingBraceIndex = findClosingBrace(i);
-                parseIfStatement(i, closingBraceIndex);
-                // Move to the end of the if block
-                int endOfConditional = findEndOfConditionalBlock(i);
-                i = endOfConditional;
+                Executor executor = new Executor(environment);
+                int afterConditional = Statements.processConditionalStatement(lines, i, executor);
+                i = afterConditional; // Skip all lines in the conditional chain
             }
 
             else {
@@ -293,14 +291,12 @@ public class Parser {
             Import.importModule(moduleName, environment);
             return;
         }
-        
-        // Handle if statements at top level
-        if (line.startsWith("if")) {
-            Executor executor = new Executor(environment);
-            Statements.processConditionalStatement(lines, lines.indexOf(line), executor);
+
+        // Defensive: Never process elif/else at top level
+        if (line.startsWith("elif") || line.startsWith("else")) {
             return;
         }
-        
+
         // Regex to match console.write statements
         Pattern pattern = Pattern.compile("console.write\\((.*)\\);");
         Matcher matcher = pattern.matcher(line);
