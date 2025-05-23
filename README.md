@@ -1,6 +1,6 @@
 # `MicroScript`
 
-**MicroScript**, often abbreviated as **MUS** and **μs** is a high-level programming language. It was originally written in **Java** and **C#** programming languages.
+**MicroScript**, often abbreviated as **MUS** and **μs** is a high-level programming language. It was originally written in **Java**, **C**, and **C#** programming languages.
 
 ## Examples
 ### "Hello, World!" program
@@ -60,7 +60,7 @@ The following shows how a **square** function is written in MicroScript programm
 
 ```js
 // Function to compute the square
-function square(number) {
+function square(number: Float64) -> Float64 {
     return number * number;
 }
 
@@ -120,6 +120,7 @@ Macros are defined using the `#define` preprocessor directive, like Object-like 
 ```c
 // Macros
 #define NUMBER 9
+#define NUMBER_PI 3.14159
 #define NAME "John!"
 #define SQUARE(x) (x * x)
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
