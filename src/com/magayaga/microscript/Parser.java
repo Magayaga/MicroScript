@@ -6,6 +6,7 @@
  */
 package com.magayaga.microscript;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -16,8 +17,8 @@ public class Parser {
     private final List<String> lines;
     private final Environment environment;
 
-    public Parser(List<String> lines) {
-        this.lines = lines;
+    public Parser(com.magayaga.microscript.Scanner scanner) throws IOException {
+        this.lines = scanner.readLines();
         this.environment = new Environment();
     }
 

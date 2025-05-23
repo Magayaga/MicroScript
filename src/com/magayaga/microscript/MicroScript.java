@@ -48,12 +48,15 @@ public class MicroScript {
         }
         
         try {
-            // After reading lines from file:
-            List<String> lines = Files.readAllLines(Paths.get(filePath));
-            // Preprocess macros
+            // Create Scanner object
+            com.magayaga.microscript.Scanner scanner = new com.magayaga.microscript.Scanner(filePath);
+            // Preprocess macros (assuming Define class might need scanner or lines)
+            // For now, let's assume Define works on lines directly. If it needs scanner, adjust accordingly.
+            List<String> lines = scanner.readLines(); // Read lines using Scanner
             Define define = new Define();
             lines = define.preprocess(lines);
-            Parser parser = new Parser(lines);
+            // Pass scanner to Parser
+            Parser parser = new Parser(scanner); // Pass our Scanner
             parser.parse();
         }
 
