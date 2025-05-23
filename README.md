@@ -132,6 +132,17 @@ function main() {
 
 main();
 ```
+## Keywords
+
+| Keywords | Programming language like style | Notes
+|:-|:-:|:-|
+| `function` | JavaScript, TypeScript, Rust | old main function with call-back main function cannot be used outside of a function definition. For example, `function function_name(parameters) {...body statement...} main();`
+| `fn` | Rust | new main function without a call-back main function. It cannot be used outside of a function definition. For example, `fn function_name(parameters) {...body statement...}`
+| `var` | Mojo | Explicitly-declared variables are created with the `var` keyword with type annotations. For example, `var variable_name: data_types = ...`
+| `bool` | C | Booleans represent values that are either true or false. It cannot be used for type annotations. For example, `bool variable_name = ...`
+| `list` | Python | A list variable, often called a list or array, is a data structure used to store an ordered collection of items (or values) within a single variable. It cannot be used for type annotations. For example, `list variable_name = ...`
+| `import` | Python | Now we can use the module we just created, by using the import statement. For example, `import module_name`
+| `if`, `elif`, `else` | Python, TypeScript, C | Enable the execution of specific code blocks based on whether certain conditions are met.
 
 ## Copyright
 
