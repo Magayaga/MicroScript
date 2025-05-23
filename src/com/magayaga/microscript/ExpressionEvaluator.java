@@ -105,12 +105,19 @@ public class ExpressionEvaluator {
 
     // Check if an object is truthy (non-zero for numbers, true for booleans)
     private boolean isTruthy(Object obj) {
-        if (obj instanceof Number) {
-            return Math.abs(((Number) obj).doubleValue()) > 0.0001;
-        } else if (obj instanceof Boolean) {
+        if (obj == null) {
+            return false;
+        }
+        if (obj instanceof Boolean) {
             return (Boolean) obj;
         }
-        return false;
+        if (obj instanceof Number) {
+            return Math.abs(((Number) obj).doubleValue()) > 0.0001;
+        }
+        if (obj instanceof String) {
+            return !((String) obj).isEmpty();
+        }
+        return true; // Any other object is considered truthy
     }
 
     // Support comparison operators and spaceship operator
@@ -121,10 +128,8 @@ public class ExpressionEvaluator {
         // Handle spaceship operator <=>
         if (ch == '<') {
             nextChar();
-            skipWhitespace();
             if (ch == '=') {
                 nextChar();
-                skipWhitespace();
                 if (ch == '>') { // Found <=> operator
                     nextChar();
                     skipWhitespace();
@@ -134,37 +139,38 @@ public class ExpressionEvaluator {
                     return (double)Double.compare(left, right);
                 } else {
                     // It's <= operator
+                    skipWhitespace();
                     Object rightObj = parseExpression();
                     double left = objectToDouble(x);
                     double right = objectToDouble(rightObj);
-                    return left <= right ? 1.0 : 0.0;
+                    return left <= right;
                 }
             } else {
                 // It's < operator
+                skipWhitespace();
                 Object rightObj = parseExpression();
                 double left = objectToDouble(x);
                 double right = objectToDouble(rightObj);
-                return left < right ? 1.0 : 0.0;
+                return left < right;
             }
         } else if (ch == '>') {
             nextChar();
-            skipWhitespace();
             if (ch == '=') {
                 nextChar();
                 skipWhitespace();
                 Object rightObj = parseExpression();
                 double left = objectToDouble(x);
                 double right = objectToDouble(rightObj);
-                return left >= right ? 1.0 : 0.0;
+                return left >= right;
             } else {
+                skipWhitespace();
                 Object rightObj = parseExpression();
                 double left = objectToDouble(x);
                 double right = objectToDouble(rightObj);
-                return left > right ? 1.0 : 0.0;
+                return left > right;
             }
         } else if (ch == '=') {
             nextChar();
-            skipWhitespace();
             if (ch == '=') {
                 nextChar();
                 skipWhitespace();
@@ -172,12 +178,11 @@ public class ExpressionEvaluator {
                 Object rightObj = parseExpression();
                 double left = objectToDouble(x);
                 double right = objectToDouble(rightObj);
-                return Math.abs(left - right) < 0.0001 ? 1.0 : 0.0;
+                return Math.abs(left - right) < 0.0001;
             }
             throw new RuntimeException("Unexpected '=' at position " + pos + ". Did you mean '=='?");
         } else if (ch == '!') {
             nextChar();
-            skipWhitespace();
             if (ch == '=') {
                 nextChar();
                 skipWhitespace();
@@ -185,7 +190,7 @@ public class ExpressionEvaluator {
                 Object rightObj = parseExpression();
                 double left = objectToDouble(x);
                 double right = objectToDouble(rightObj);
-                return Math.abs(left - right) >= 0.0001 ? 1.0 : 0.0;
+                return Math.abs(left - right) >= 0.0001;
             }
             throw new RuntimeException("Unexpected '!' at position " + pos + ". Did you mean '!='?");
         }

@@ -342,6 +342,7 @@ public class Executor {
                 if (line.isEmpty() || line.startsWith("//")) {
                     continue;
                 }
+                
                 // Handle if statements
                 if (line.startsWith("if")) {
                     // Create an executor with the local environment to ensure variables are accessible
@@ -357,6 +358,23 @@ public class Executor {
                     i = newIndex - 1; // -1 because the loop will increment i
                     continue;
                 }
+                
+                // Handle while loops
+                if (line.startsWith("while")) {
+                    // Create an executor with the local environment
+                    Executor localExecutor = new Executor(localEnv);
+                    // Process the while loop
+                    int newIndex = Loop.processLoop(body, i, localExecutor);
+                    
+                    // Ensure we're making progress
+                    if (newIndex <= i) {
+                        throw new RuntimeException("Error processing while loop at line: " + line);
+                    }
+                    
+                    i = newIndex - 1; // -1 because the loop will increment i
+                    continue;
+                }
+                
                 // Handle return statements
                 if (line.startsWith("return")) {
                     String returnExpression = line.substring(line.indexOf("return") + 6).trim().replace(";", "");

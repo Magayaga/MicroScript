@@ -166,16 +166,16 @@ public class Statements {
             // Check if there are any closing braces on the same line after the opening brace
             for (int i = openingBracePos + 1; i < firstLine.length(); i++) {
                 if (firstLine.charAt(i) == '{') {
-                    braceCount++;
+                braceCount++;
                 } else if (firstLine.charAt(i) == '}') {
-                    braceCount--;
+                braceCount--;
                     if (braceCount == 0) {
                         return openingBraceLineIndex; // The block starts and ends on the same line
                     }
                 }
             }
         } else {
-            // If opening brace wasn't found on the first line, return error
+        // If opening brace wasn't found on the first line, return error
             throw new RuntimeException("No opening brace found at line index: " + openingBraceLineIndex);
         }
         

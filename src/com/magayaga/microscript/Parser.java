@@ -69,6 +69,13 @@ public class Parser {
                 int afterConditional = Statements.processConditionalStatement(lines, i, executor);
                 i = afterConditional; // Skip all lines in the conditional chain
             }
+            
+            // Handle while loop as a single block
+            else if (line.startsWith("while")) {
+                Executor executor = new Executor(environment);
+                int afterLoop = Loop.processLoop(lines, i, executor);
+                i = afterLoop; // Skip all lines in the loop
+            }
 
             else {
                 // Execute top-level commands
