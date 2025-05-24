@@ -17,8 +17,27 @@ import java.util.Arrays;
 public class Executor {
     private final Environment environment;
 
+    // Pre-compiled regex patterns
+    private static final Pattern CONSOLE_WRITE_PATTERN = Pattern.compile("console\\.write\\((.*)\\);");
+    private static final Pattern CONSOLE_SYSTEM_PATTERN = Pattern.compile("console\\.system\\((.*)\\);");
+    private static final Pattern FUNCTION_CALL_PATTERN = Pattern.compile("(\\w+)\\((.*)\\)");
+    private static final Pattern STRING_TEMPLATE_EXPR_PATTERN = Pattern.compile("\\{([^{}]+)\\}");
+    private static final Pattern STRING_TEMPLATE_POSITIONAL_PATTERN = Pattern.compile("\\{\\}");
+
     public Executor(Environment environment) {
         this.environment = environment;
+    }
+
+    public static List<String> splitByCommaWithTrim(String input) {
+        List<String> result = new ArrayList<>();
+        if (input == null || input.isEmpty()) {
+            return result;
+        }
+        String[] parts = input.split(",");
+        for (String part : parts) {
+            result.add(part.trim());
+        }
+        return result;
     }
 
     public void execute(String expression) {
@@ -39,8 +58,7 @@ public class Executor {
 
             if (expression.startsWith("console.write")) {
                 // Extract the content inside console.write()
-                Pattern pattern = Pattern.compile("console\\.write\\((.*)\\);");
-                Matcher matcher = pattern.matcher(expression);
+                Matcher matcher = CONSOLE_WRITE_PATTERN.matcher(expression);
                 if (matcher.matches()) {
                     String innerContent = matcher.group(1).trim();
                     
@@ -66,8 +84,7 @@ public class Executor {
                     
                     // Process the template with expressions - {expression} style
                     StringBuffer output = new StringBuffer();
-                    Pattern exprPattern = Pattern.compile("\\{([^{}]+)\\}");
-                    Matcher placeholderMatcher = exprPattern.matcher(template);
+                    Matcher placeholderMatcher = STRING_TEMPLATE_EXPR_PATTERN.matcher(template);
                     
                     while (placeholderMatcher.find()) {
                         String expr = placeholderMatcher.group(1).trim();
@@ -91,8 +108,7 @@ public class Executor {
                     if (arguments.size() > 1) {
                         // If there are additional arguments, handle positional placeholders
                         StringBuffer positionalOutput = new StringBuffer();
-                        Pattern positionalPattern = Pattern.compile("\\{\\}");
-                        Matcher positionalMatcher = positionalPattern.matcher(result);
+                        Matcher positionalMatcher = STRING_TEMPLATE_POSITIONAL_PATTERN.matcher(result);
                         
                         int argIndex = 1; // Start from the second argument
                         while (positionalMatcher.find() && argIndex < arguments.size()) {
@@ -110,8 +126,7 @@ public class Executor {
 
             else if (expression.startsWith("console.system")) {
                 // Extract the command inside console.system()
-                Pattern pattern = Pattern.compile("console.system\\((.*)\\);");
-                Matcher matcher = pattern.matcher(expression);
+                Matcher matcher = CONSOLE_SYSTEM_PATTERN.matcher(expression);
                 if (matcher.matches()) {
                     String command = matcher.group(1).trim();
                     executeSystemCommand(command);
@@ -204,7 +219,7 @@ public class Executor {
                     String valueExpression = declaration.substring(equalsIndex + 1).trim().replace(";", "");
                     if (valueExpression.startsWith("[") && valueExpression.endsWith("]")) {
                         String elements = valueExpression.substring(1, valueExpression.length() - 1);
-                        ListVariable list = new ListVariable(elements.split("\\s*,\\s*"));
+                        ListVariable list = new ListVariable(splitByCommaWithTrim(elements).toArray(new String[0]));
                         environment.setVariable(listName, list);
                     }
                     
@@ -337,7 +352,7 @@ public class Executor {
             List<String> body = function.getBody();
             // Process function body, handling control flow structures like if/else
             for (int i = 0; i < body.size(); i++) {
-                String line = body.get(i).trim();
+                String line = body.get(i).trim(); // Trim line once here
                 // Skip empty lines and comments
                 if (line.isEmpty() || line.startsWith("//")) {
                     continue;
@@ -345,10 +360,8 @@ public class Executor {
                 
                 // Handle if statements
                 if (line.startsWith("if")) {
-                    // Create an executor with the local environment to ensure variables are accessible
-                    Executor localExecutor = new Executor(localEnv);
                     // Use the Statements class to process the conditional
-                    int newIndex = Statements.processConditionalStatement(body, i, localExecutor);
+                    int newIndex = Statements.processConditionalStatement(body, i, new Executor(localEnv));
                     
                     // Important: Make sure we're not stuck in an infinite loop
                     if (newIndex <= i) {
@@ -361,10 +374,8 @@ public class Executor {
                 
                 // Handle while loops
                 if (line.startsWith("while")) {
-                    // Create an executor with the local environment
-                    Executor localExecutor = new Executor(localEnv);
                     // Process the while loop
-                    int newIndex = Loop.processLoop(body, i, localExecutor);
+                    int newIndex = Loop.processLoop(body, i, new Executor(localEnv));
                     
                     // Ensure we're making progress
                     if (newIndex <= i) {
@@ -420,7 +431,7 @@ public class Executor {
                     return returnValue; // Exit the function immediately after return
                 }
                 // Use a local executor to ensure variable modifications are retained
-                new Executor(localEnv).execute(line);
+                new Executor(localEnv).execute(line); // Pass the already trimmed line
             }
             return returnValue;
         }
@@ -453,12 +464,11 @@ public class Executor {
         }
 
         // Check if the expression is a function call
-        Pattern functionCallPattern = Pattern.compile("(\\w+)\\((.*)\\)");
-        Matcher matcher = functionCallPattern.matcher(expression);
+        Matcher matcher = FUNCTION_CALL_PATTERN.matcher(expression);
         if (matcher.matches()) {
             String functionName = matcher.group(1);
             String args = matcher.group(2).trim();
-            String[] arguments = args.isEmpty() ? new String[0] : splitArguments(args).toArray(new String[0]);
+            String[] arguments = args.isEmpty() ? new String[0] : splitByCommaWithTrim(args).toArray(new String[0]);
             return executeFunction(functionName, arguments);
         }
 
