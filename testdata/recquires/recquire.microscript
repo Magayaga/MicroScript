@@ -1,0 +1,8 @@
+recquire "square"
+
+function main() {
+    console.write(square(4));
+}
+
+main();
+

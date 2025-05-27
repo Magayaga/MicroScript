@@ -1,0 +1,5 @@
+function square(number: Float64) -> Float64 {
+    return number * number;
+}
+
+export "square"

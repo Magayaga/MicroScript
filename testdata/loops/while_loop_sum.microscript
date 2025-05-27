@@ -1,0 +1,16 @@
+// Sum function with While loop using MicroScript
+// Copyright (c) 2025 Cyril John Magayaga
+
+function main() {
+    var num: Float64 = 5
+    var sum: Float64 = 0
+
+    while (num > 0) {
+        sum += num
+        num--;
+    }
+
+    console.write(sum);
+}
+
+main();

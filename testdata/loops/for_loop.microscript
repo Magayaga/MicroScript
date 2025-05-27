@@ -1,0 +1,10 @@
+// For loop using MicroScript
+// Copyright (c) 2025 Cyril John Magayaga
+
+function main() {
+    for (var i: Float64 = 0; i < 5; i++) {
+        console.write(i);
+    }
+}
+
+main();

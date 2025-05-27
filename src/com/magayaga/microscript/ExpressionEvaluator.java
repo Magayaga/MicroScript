@@ -24,14 +24,116 @@ public class ExpressionEvaluator {
     public Object parse() {
         nextChar();
         skipWhitespace(); // Start by skipping initial whitespace
+        
+        // Check for increment/decrement statements first
+        Object incrementResult = parseIncrementDecrement();
+        if (incrementResult != null) {
+            return incrementResult;
+        }
+        
+        // Reset position for normal parsing
+        pos = -1;
+        nextChar();
+        skipWhitespace();
+        
         Object x = parseAssignment(); // Start with assignment (walrus operator)
         skipWhitespace(); // Skip any trailing whitespace
         if (pos < expression.length()) throw new RuntimeException("Unexpected: " + (char) ch);
         return x;
     }
 
+    private Object parseIncrementDecrement() {
+        // Save initial state
+        int savedPos = pos;
+        int savedCh = ch;
+        
+        // Parse variable name
+        StringBuilder varName = new StringBuilder();
+        while ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || 
+               (ch >= '0' && ch <= '9') || ch == '_') {
+            varName.append((char)ch);
+            nextChar();
+        }
+        
+        skipWhitespace();
+        
+        // Check for ++ or --
+        if (ch == '+') {
+            nextChar();
+            if (ch == '+') {
+                nextChar(); // consume second +
+                skipWhitespace();
+                
+                // Check if we're at the end or semicolon
+                if (pos >= expression.length() || ch == ';') {
+                    // This is a post-increment: variable++
+                    String variable = varName.toString();
+                    Object currentValue = environment.getVariable(variable);
+                    
+                    if (currentValue == null) {
+                        throw new RuntimeException("Undefined variable: " + variable);
+                    }
+                    
+                    if (!(currentValue instanceof Number)) {
+                        throw new RuntimeException("Cannot increment non-numeric variable: " + variable);
+                    }
+                    
+                    double currentNum = ((Number) currentValue).doubleValue();
+                    double newValue = currentNum + 1;
+                    
+                    // Store the new value
+                    if (currentValue instanceof Integer) {
+                        environment.setVariable(variable, (int) newValue);
+                        return (int) currentNum; // Return original value for post-increment
+                    } else {
+                        environment.setVariable(variable, newValue);
+                        return currentNum; // Return original value for post-increment
+                    }
+                }
+            }
+        } else if (ch == '-') {
+            nextChar();
+            if (ch == '-') {
+                nextChar(); // consume second -
+                skipWhitespace();
+                
+                // Check if we're at the end or semicolon
+                if (pos >= expression.length() || ch == ';') {
+                    // This is a post-decrement: variable--
+                    String variable = varName.toString();
+                    Object currentValue = environment.getVariable(variable);
+                    
+                    if (currentValue == null) {
+                        throw new RuntimeException("Undefined variable: " + variable);
+                    }
+                    
+                    if (!(currentValue instanceof Number)) {
+                        throw new RuntimeException("Cannot decrement non-numeric variable: " + variable);
+                    }
+                    
+                    double currentNum = ((Number) currentValue).doubleValue();
+                    double newValue = currentNum - 1;
+                    
+                    // Store the new value
+                    if (currentValue instanceof Integer) {
+                        environment.setVariable(variable, (int) newValue);
+                        return (int) currentNum; // Return original value for post-decrement
+                    } else {
+                        environment.setVariable(variable, newValue);
+                        return currentNum; // Return original value for post-decrement
+                    }
+                }
+            }
+        }
+        
+        // Restore state if not increment/decrement
+        pos = savedPos;
+        ch = savedCh;
+        return null;
+    }
+
     private Object parseAssignment() {
-        // Look ahead for walrus operator (:=)
+        // Look ahead for assignment operators (:=, +=, -=, *=, /=)
         int savedPos = pos;
         int savedCh = ch;
         
@@ -45,16 +147,60 @@ public class ExpressionEvaluator {
         
         skipWhitespace();
         
-        // Check for := operator
-        boolean isWalrus = false;
+        // Check for assignment operators
+        String assignmentOp = null;
         if (ch == ':') {
             nextChar();
             if (ch == '=') {
-                isWalrus = true;
+                assignmentOp = ":="; // walrus operator
                 nextChar(); // consume =
                 skipWhitespace();
             } else {
                 // Revert back if not a walrus operator
+                pos = savedPos;
+                ch = savedCh;
+            }
+        } else if (ch == '+') {
+            nextChar();
+            if (ch == '=') {
+                assignmentOp = "+="; // compound addition
+                nextChar(); // consume =
+                skipWhitespace();
+            } else {
+                // Revert back if not a compound assignment
+                pos = savedPos;
+                ch = savedCh;
+            }
+        } else if (ch == '-') {
+            nextChar();
+            if (ch == '=') {
+                assignmentOp = "-="; // compound subtraction
+                nextChar(); // consume =
+                skipWhitespace();
+            } else {
+                // Revert back if not a compound assignment
+                pos = savedPos;
+                ch = savedCh;
+            }
+        } else if (ch == '*') {
+            nextChar();
+            if (ch == '=') {
+                assignmentOp = "*="; // compound multiplication
+                nextChar(); // consume =
+                skipWhitespace();
+            } else {
+                // Revert back if not a compound assignment
+                pos = savedPos;
+                ch = savedCh;
+            }
+        } else if (ch == '/') {
+            nextChar();
+            if (ch == '=') {
+                assignmentOp = "/="; // compound division
+                nextChar(); // consume =
+                skipWhitespace();
+            } else {
+                // Revert back if not a compound assignment
                 pos = savedPos;
                 ch = savedCh;
             }
@@ -64,12 +210,56 @@ public class ExpressionEvaluator {
             ch = savedCh;
         }
         
-        if (isWalrus) {
-            // This is a walrus operator assignment
-            Object value = parseAssignment(); // Support chained assignments
-            // Store value in variable
-            environment.setVariable(varName.toString(), value);
-            return value; // Return the assigned value
+        if (assignmentOp != null) {
+            String variable = varName.toString();
+            Object rightValue = parseAssignment(); // Support chained assignments
+            
+            if (assignmentOp.equals(":=")) {
+                // Walrus operator - simple assignment
+                environment.setVariable(variable, rightValue);
+                return rightValue;
+            } else {
+                // Compound assignment - need to get current value first
+                Object currentValue = environment.getVariable(variable);
+                if (currentValue == null) {
+                    throw new RuntimeException("Undefined variable for compound assignment: " + variable);
+                }
+                
+                double currentNum = objectToDouble(currentValue);
+                double rightNum = objectToDouble(rightValue);
+                double result;
+                
+                switch (assignmentOp) {
+                    case "+=":
+                        result = currentNum + rightNum;
+                        break;
+                    case "-=":
+                        result = currentNum - rightNum;
+                        break;
+                    case "*=":
+                        result = currentNum * rightNum;
+                        break;
+                    case "/=":
+                        if (Math.abs(rightNum) < 0.0001) {
+                            throw new RuntimeException("Division by zero in compound assignment");
+                        }
+                        result = currentNum / rightNum;
+                        break;
+                    default:
+                        throw new RuntimeException("Unknown compound assignment operator: " + assignmentOp);
+                }
+                
+                // Store the result, preserving the original type if it was an integer
+                Object finalValue;
+                if (currentValue instanceof Integer && result == Math.floor(result)) {
+                    finalValue = (int) result;
+                } else {
+                    finalValue = result;
+                }
+                
+                environment.setVariable(variable, finalValue);
+                return finalValue;
+            }
         }
         
         return parseTernary();
@@ -304,16 +494,95 @@ public class ExpressionEvaluator {
 
     private Object parseFactor() {
         skipWhitespace();
+        
+        // Handle pre-increment and pre-decrement
         if (ch == '+') {
-            nextChar(); // consume +
-            skipWhitespace();
-            return parseFactor(); // unary plus
+            int nextPos = pos + 1;
+            if (nextPos < expression.length() && expression.charAt(nextPos) == '+') {
+                nextChar(); // consume first +
+                nextChar(); // consume second +
+                skipWhitespace();
+                
+                // Parse variable name
+                StringBuilder varName = new StringBuilder();
+                while ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || 
+                       (ch >= '0' && ch <= '9') || ch == '_') {
+                    varName.append((char)ch);
+                    nextChar();
+                }
+                
+                String variable = varName.toString();
+                Object currentValue = environment.getVariable(variable);
+                
+                if (currentValue == null) {
+                    throw new RuntimeException("Undefined variable: " + variable);
+                }
+                
+                if (!(currentValue instanceof Number)) {
+                    throw new RuntimeException("Cannot increment non-numeric variable: " + variable);
+                }
+                
+                double currentNum = ((Number) currentValue).doubleValue();
+                double newValue = currentNum + 1;
+                
+                // Store and return the new value
+                if (currentValue instanceof Integer) {
+                    environment.setVariable(variable, (int) newValue);
+                    return (int) newValue;
+                } else {
+                    environment.setVariable(variable, newValue);
+                    return newValue;
+                }
+            } else {
+                nextChar(); // consume +
+                skipWhitespace();
+                return parseFactor(); // unary plus
+            }
         }
+        
         if (ch == '-') {
-            nextChar(); // consume -
-            skipWhitespace();
-            Object factor = parseFactor();
-            return -objectToDouble(factor); // unary minus
+            int nextPos = pos + 1;
+            if (nextPos < expression.length() && expression.charAt(nextPos) == '-') {
+                nextChar(); // consume first -
+                nextChar(); // consume second -
+                skipWhitespace();
+                
+                // Parse variable name
+                StringBuilder varName = new StringBuilder();
+                while ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || 
+                       (ch >= '0' && ch <= '9') || ch == '_') {
+                    varName.append((char)ch);
+                    nextChar();
+                }
+                
+                String variable = varName.toString();
+                Object currentValue = environment.getVariable(variable);
+                
+                if (currentValue == null) {
+                    throw new RuntimeException("Undefined variable: " + variable);
+                }
+                
+                if (!(currentValue instanceof Number)) {
+                    throw new RuntimeException("Cannot decrement non-numeric variable: " + variable);
+                }
+                
+                double currentNum = ((Number) currentValue).doubleValue();
+                double newValue = currentNum - 1;
+                
+                // Store and return the new value
+                if (currentValue instanceof Integer) {
+                    environment.setVariable(variable, (int) newValue);
+                    return (int) newValue;
+                } else {
+                    environment.setVariable(variable, newValue);
+                    return newValue;
+                }
+            } else {
+                nextChar(); // consume -
+                skipWhitespace();
+                Object factor = parseFactor();
+                return -objectToDouble(factor); // unary minus
+            }
         }
 
         Object x;
@@ -343,6 +612,69 @@ public class ExpressionEvaluator {
                 nextChar();
             }
             skipWhitespace();
+            
+            // Check for post-increment/decrement
+            if (ch == '+') {
+                int nextPos = pos + 1;
+                if (nextPos < expression.length() && expression.charAt(nextPos) == '+') {
+                    nextChar(); // consume first +
+                    nextChar(); // consume second +
+                    skipWhitespace();
+                    
+                    String variable = identifier.toString();
+                    Object currentValue = environment.getVariable(variable);
+                    
+                    if (currentValue == null) {
+                        throw new RuntimeException("Undefined variable: " + variable);
+                    }
+                    
+                    if (!(currentValue instanceof Number)) {
+                        throw new RuntimeException("Cannot increment non-numeric variable: " + variable);
+                    }
+                    
+                    double currentNum = ((Number) currentValue).doubleValue();
+                    double newValue = currentNum + 1;
+                    
+                    // Store the new value but return the original value
+                    if (currentValue instanceof Integer) {
+                        environment.setVariable(variable, (int) newValue);
+                        return (int) currentNum;
+                    } else {
+                        environment.setVariable(variable, newValue);
+                        return currentNum;
+                    }
+                }
+            } else if (ch == '-') {
+                int nextPos = pos + 1;
+                if (nextPos < expression.length() && expression.charAt(nextPos) == '-') {
+                    nextChar(); // consume first -
+                    nextChar(); // consume second -
+                    skipWhitespace();
+                    
+                    String variable = identifier.toString();
+                    Object currentValue = environment.getVariable(variable);
+                    
+                    if (currentValue == null) {
+                        throw new RuntimeException("Undefined variable: " + variable);
+                    }
+                    
+                    if (!(currentValue instanceof Number)) {
+                        throw new RuntimeException("Cannot decrement non-numeric variable: " + variable);
+                    }
+                    
+                    double currentNum = ((Number) currentValue).doubleValue();
+                    double newValue = currentNum - 1;
+                    
+                    // Store the new value but return the original value
+                    if (currentValue instanceof Integer) {
+                        environment.setVariable(variable, (int) newValue);
+                        return (int) currentNum;
+                    } else {
+                        environment.setVariable(variable, newValue);
+                        return currentNum;
+                    }
+                }
+            }
             
             // Look ahead for module operator ::
             if (ch == ':') {

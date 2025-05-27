@@ -23,6 +23,12 @@ public class Executor {
     private static final Pattern FUNCTION_CALL_PATTERN = Pattern.compile("(\\w+)\\((.*)\\)");
     private static final Pattern STRING_TEMPLATE_EXPR_PATTERN = Pattern.compile("\\{([^{}]+)\\}");
     private static final Pattern STRING_TEMPLATE_POSITIONAL_PATTERN = Pattern.compile("\\{\\}");
+    
+    // Patterns for increment/decrement operations
+    private static final Pattern PRE_INCREMENT_PATTERN = Pattern.compile("\\+\\+([a-zA-Z_][a-zA-Z0-9_]*)\\s*;?");
+    private static final Pattern PRE_DECREMENT_PATTERN = Pattern.compile("--([a-zA-Z_][a-zA-Z0-9_]*)\\s*;?");
+    private static final Pattern POST_INCREMENT_PATTERN = Pattern.compile("([a-zA-Z_][a-zA-Z0-9_]*)\\+\\+\\s*;?");
+    private static final Pattern POST_DECREMENT_PATTERN = Pattern.compile("([a-zA-Z_][a-zA-Z0-9_]*)--\\s*;?");
 
     public Executor(Environment environment) {
         this.environment = environment;
@@ -44,6 +50,11 @@ public class Executor {
         try {
             // Skip comments
             if (expression.startsWith("//")) {
+                return;
+            }
+
+            // Handle increment/decrement operations first
+            if (handleIncrementDecrement(expression)) {
                 return;
             }
 
@@ -248,6 +259,121 @@ public class Executor {
         catch (Exception e) {
             System.out.println("Evaluation error: " + e.getMessage());
         }
+    }
+
+    /**
+     * Handle increment and decrement operations (++var, var++, --var, var--)
+     * @param expression The expression to check and potentially execute
+     * @return true if the expression was an increment/decrement operation and was handled
+     */
+    private boolean handleIncrementDecrement(String expression) {
+        String trimmed = expression.trim();
+        
+        // Handle pre-increment (++var)
+        Matcher preIncMatcher = PRE_INCREMENT_PATTERN.matcher(trimmed);
+        if (preIncMatcher.matches()) {
+            String varName = preIncMatcher.group(1);
+            Object currentValue = environment.getVariable(varName);
+            
+            if (currentValue == null) {
+                throw new RuntimeException("Undefined variable: " + varName);
+            }
+            
+            if (!(currentValue instanceof Number)) {
+                throw new RuntimeException("Cannot increment non-numeric variable: " + varName);
+            }
+            
+            double currentNum = ((Number) currentValue).doubleValue();
+            double newValue = currentNum + 1;
+            
+            // Store the new value
+            if (currentValue instanceof Integer) {
+                environment.setVariable(varName, (int) newValue);
+            } else {
+                environment.setVariable(varName, newValue);
+            }
+            return true;
+        }
+        
+        // Handle pre-decrement (--var)
+        Matcher preDecMatcher = PRE_DECREMENT_PATTERN.matcher(trimmed);
+        if (preDecMatcher.matches()) {
+            String varName = preDecMatcher.group(1);
+            Object currentValue = environment.getVariable(varName);
+            
+            if (currentValue == null) {
+                throw new RuntimeException("Undefined variable: " + varName);
+            }
+            
+            if (!(currentValue instanceof Number)) {
+                throw new RuntimeException("Cannot decrement non-numeric variable: " + varName);
+            }
+            
+            double currentNum = ((Number) currentValue).doubleValue();
+            double newValue = currentNum - 1;
+            
+            // Store the new value
+            if (currentValue instanceof Integer) {
+                environment.setVariable(varName, (int) newValue);
+            } else {
+                environment.setVariable(varName, newValue);
+            }
+            return true;
+        }
+        
+        // Handle post-increment (var++)
+        Matcher postIncMatcher = POST_INCREMENT_PATTERN.matcher(trimmed);
+        if (postIncMatcher.matches()) {
+            String varName = postIncMatcher.group(1);
+            Object currentValue = environment.getVariable(varName);
+            
+            if (currentValue == null) {
+                throw new RuntimeException("Undefined variable: " + varName);
+            }
+            
+            if (!(currentValue instanceof Number)) {
+                throw new RuntimeException("Cannot increment non-numeric variable: " + varName);
+            }
+            
+            double currentNum = ((Number) currentValue).doubleValue();
+            double newValue = currentNum + 1;
+            
+            // Store the new value
+            if (currentValue instanceof Integer) {
+                environment.setVariable(varName, (int) newValue);
+            } else {
+                environment.setVariable(varName, newValue);
+            }
+            return true;
+        }
+        
+        // Handle post-decrement (var--)
+        Matcher postDecMatcher = POST_DECREMENT_PATTERN.matcher(trimmed);
+        if (postDecMatcher.matches()) {
+            String varName = postDecMatcher.group(1);
+            Object currentValue = environment.getVariable(varName);
+            
+            if (currentValue == null) {
+                throw new RuntimeException("Undefined variable: " + varName);
+            }
+            
+            if (!(currentValue instanceof Number)) {
+                throw new RuntimeException("Cannot decrement non-numeric variable: " + varName);
+            }
+            
+            double currentNum = ((Number) currentValue).doubleValue();
+            double newValue = currentNum - 1;
+            
+            // Store the new value
+            if (currentValue instanceof Integer) {
+                environment.setVariable(varName, (int) newValue);
+            } else {
+                environment.setVariable(varName, newValue);
+            }
+            return true;
+        }
+        
+        return false; // Not an increment/decrement operation
     }
 
     // Helper method to split arguments respecting quotes and nested structures

@@ -43,7 +43,7 @@ public class WhileLoop {
         }
         
         // Find the end of the while block
-        int blockEndIndex = Loop.findMatchingClosingBrace(lines, blockStartIndex);
+        int blockEndIndex = findMatchingClosingBrace(lines, blockStartIndex);
         if (blockEndIndex == -1) {
             throw new RuntimeException("Missing closing brace for while loop starting at line: " + line);
         }
@@ -81,10 +81,17 @@ public class WhileLoop {
             }
             
             // Execute the loop body
-            boolean shouldBreak = Loop.executeLoopBlock(lines, startIndex, endIndex, executor);
+            LoopControl loopControl = executeLoopBlock(lines, startIndex, endIndex, executor);
             
-            // If a break statement was executed, exit the loop
-            if (shouldBreak) {
+            // Handle loop control statements
+            if (loopControl == LoopControl.BREAK) {
+                break;
+            } else if (loopControl == LoopControl.CONTINUE) {
+                // Continue to next iteration
+                iterations++;
+                continue;
+            } else if (loopControl == LoopControl.RETURN) {
+                // Return statement encountered, exit the loop
                 break;
             }
             
@@ -97,6 +104,114 @@ public class WhileLoop {
                                          MAX_ITERATIONS + " iterations");
             }
         }
+    }
+    
+    /**
+     * Enum to represent loop control flow
+     */
+    private enum LoopControl {
+        CONTINUE,   // Continue to next iteration
+        BREAK,      // Break out of the loop
+        RETURN,     // Return from function
+        NORMAL      // Normal execution
+    }
+    
+    /**
+     * Execute a block of code within the loop
+     * @param lines List of code lines
+     * @param startIndex Start index of the block
+     * @param endIndex End index of the block
+     * @param executor The executor to use
+     * @return LoopControl indicating how the loop should proceed
+     */
+    private static LoopControl executeLoopBlock(List<String> lines, int startIndex, int endIndex, Executor executor) {
+        for (int i = startIndex; i < endIndex; i++) {
+            String line = lines.get(i).trim();
+            
+            // Skip empty lines and comments
+            if (line.isEmpty() || line.startsWith("//")) {
+                continue;
+            }
+            
+            // Handle multi-line comments
+            if (line.startsWith("/*")) {
+                while (i < endIndex && !lines.get(i).contains("*/")) {
+                    i++;
+                }
+                continue;
+            }
+            
+            // Handle break statements
+            if (line.equals("break") || line.equals("break;")) {
+                return LoopControl.BREAK;
+            }
+            
+            // Handle continue statements
+            if (line.equals("continue") || line.equals("continue;")) {
+                return LoopControl.CONTINUE;
+            }
+            
+            // Handle return statements
+            if (line.startsWith("return")) {
+                executor.execute(line);
+                return LoopControl.RETURN;
+            }
+            
+            // Handle nested if statements
+            if (line.startsWith("if")) {
+                try {
+                    // Process the conditional statement and get the new index
+                    int newIndex = Statements.processConditionalStatement(lines, i, executor);
+                    
+                    // Make sure we advance properly
+                    if (newIndex > i) {
+                        i = newIndex - 1; // -1 because the for loop will increment i
+                    }
+                } catch (Exception e) {
+                    throw new RuntimeException("Error processing if statement in while loop: " + e.getMessage());
+                }
+                continue;
+            }
+            
+            // Handle nested while loops
+            if (line.startsWith("while")) {
+                try {
+                    // Process the nested while loop
+                    int newIndex = processWhileLoop(lines, i, executor);
+                    
+                    // Make sure we advance properly
+                    if (newIndex > i) {
+                        i = newIndex - 1; // -1 because the for loop will increment i
+                    }
+                } catch (Exception e) {
+                    throw new RuntimeException("Error processing nested while loop: " + e.getMessage());
+                }
+                continue;
+            }
+            
+            // Handle for loops (if you have them)
+            if (line.startsWith("for")) {
+                try {
+                    // Assuming you have a ForLoop class similar to WhileLoop
+                    // int newIndex = ForLoop.processForLoop(lines, i, executor);
+                    // if (newIndex > i) {
+                    //     i = newIndex - 1;
+                    // }
+                    throw new RuntimeException("For loops not yet implemented in while loop context");
+                } catch (Exception e) {
+                    throw new RuntimeException("Error processing for loop in while loop: " + e.getMessage());
+                }
+            }
+            
+            try {
+                // Execute regular statements (including variable assignments, increments/decrements, etc.)
+                executor.execute(line);
+            } catch (Exception e) {
+                throw new RuntimeException("Error executing statement in while loop: '" + line + "' - " + e.getMessage());
+            }
+        }
+        
+        return LoopControl.NORMAL; // Normal execution completed
     }
     
     /**
@@ -113,6 +228,49 @@ public class WhileLoop {
             }
         }
         return -1;
+    }
+    
+    /**
+     * Find the matching closing brace for an opening brace
+     * @param lines List of code lines
+     * @param openBraceIndex Index of the line with the opening brace
+     * @return Index of the line with the matching closing brace, or -1 if not found
+     */
+    private static int findMatchingClosingBrace(List<String> lines, int openBraceIndex) {
+        int braceCount = 0;
+        boolean foundOpenBrace = false;
+        
+        for (int i = openBraceIndex; i < lines.size(); i++) {
+            String line = lines.get(i).trim();
+            
+            // Skip empty lines and comments
+            if (line.isEmpty() || line.startsWith("//")) {
+                continue;
+            }
+            
+            // Handle multi-line comments
+            if (line.startsWith("/*")) {
+                while (i < lines.size() && !lines.get(i).contains("*/")) {
+                    i++;
+                }
+                continue;
+            }
+            
+            // Count braces in the line
+            for (char c : line.toCharArray()) {
+                if (c == '{') {
+                    braceCount++;
+                    foundOpenBrace = true;
+                } else if (c == '}') {
+                    braceCount--;
+                    if (foundOpenBrace && braceCount == 0) {
+                        return i; // Found matching closing brace
+                    }
+                }
+            }
+        }
+        
+        return -1; // No matching closing brace found
     }
     
     /**
@@ -143,4 +301,4 @@ public class WhileLoop {
         // For any other object, consider it true
         return true;
     }
-} 
+}

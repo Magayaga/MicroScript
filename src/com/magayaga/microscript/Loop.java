@@ -26,10 +26,9 @@ public class Loop {
         if (line.startsWith("while")) {
             return WhileLoop.processWhileLoop(lines, startIndex, executor);
         }
-        // Add support for for loops in the future
-        // else if (line.startsWith("for")) {
-        //     return ForLoop.processForLoop(lines, startIndex, executor);
-        // }
+        else if (line.startsWith("for")) {
+            return ForLoop.processForLoop(lines, startIndex, executor);
+        }
         
         // Unknown loop type
         throw new RuntimeException("Unknown loop type at line: " + line);
