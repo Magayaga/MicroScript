@@ -1,0 +1,15 @@
+// Factorial function with For loop using MicroScript
+// Copyright (c) 2025 Cyril John Magayaga
+
+function main() {
+    var num: Float64 = 5
+    var factorial: Float64 = 1
+
+    for (var i: Float64 = 1; i <= num; i++) {
+        factorial *= i
+    }
+
+    console.write(factorial);
+}
+
+main();

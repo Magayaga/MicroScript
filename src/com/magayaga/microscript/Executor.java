@@ -67,6 +67,22 @@ public class Executor {
                 return;
             }
 
+            // Handle for loop statements
+            if (expression.startsWith("for")) {
+                // For loops should be handled by ForLoop class
+                // but this is for direct execution from command line or REPL
+                ForLoop.processForLoop(Arrays.asList(expression), 0, this);
+                return;
+            }
+
+            // Handle while loop statements
+            if (expression.startsWith("while")) {
+                // While loops should be handled by WhileLoop class
+                // but this is for direct execution from command line or REPL
+                WhileLoop.processWhileLoop(Arrays.asList(expression), 0, this);
+                return;
+            }
+
             if (expression.startsWith("console.write")) {
                 // Extract the content inside console.write()
                 Matcher matcher = CONSOLE_WRITE_PATTERN.matcher(expression);
@@ -492,6 +508,20 @@ public class Executor {
                     // Important: Make sure we're not stuck in an infinite loop
                     if (newIndex <= i) {
                         throw new RuntimeException("Error processing if statement at line: " + line);
+                    }
+                    
+                    i = newIndex - 1; // -1 because the loop will increment i
+                    continue;
+                }
+                
+                // Handle for loops
+                if (line.startsWith("for")) {
+                    // Process the for loop
+                    int newIndex = ForLoop.processForLoop(body, i, new Executor(localEnv));
+                    
+                    // Ensure we're making progress
+                    if (newIndex <= i) {
+                        throw new RuntimeException("Error processing for loop at line: " + line);
                     }
                     
                     i = newIndex - 1; // -1 because the loop will increment i
