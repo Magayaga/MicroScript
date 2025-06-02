@@ -143,6 +143,8 @@ main();
 | `list` | Python | A list variable, often called a list or array, is a data structure used to store an ordered collection of items (or values) within a single variable. It cannot be used for type annotations. For example, `list variable_name = ...`
 | `import` | Python | Now we can use the module we just created, by using the import statement. For example, `import module_name`
 | `if`, `elif`, `else` | Python, TypeScript, C | Enable the execution of specific code blocks based on whether certain conditions are met.
+| `while` | C | A control flow statement that executes a block of code repeatedly as long as a specified condition remains true.
+| `for` | Mojo, C | When you know exactly how many times you want to loop through a block of code, use the for loop instead of a while loop.
 
 ## Copyright
 

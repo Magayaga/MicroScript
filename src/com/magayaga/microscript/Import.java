@@ -51,6 +51,19 @@ public class Import {
             env.setVariable("math::log10", (Import.FunctionInterface) (args) -> NativeMath.log10(((Number) args[0]).doubleValue()));
             env.setVariable("math::log2", (Import.FunctionInterface) (args) -> NativeMath.log2(((Number) args[0]).doubleValue()));
             env.setVariable("math::log", (Import.FunctionInterface) (args) -> NativeMath.log(((Number) args[0]).doubleValue()));
+            env.setVariable("math::sin", (Import.FunctionInterface) (args) -> NativeMath.sin(((Number) args[0]).doubleValue()));
+            env.setVariable("math::cos", (Import.FunctionInterface) (args) -> NativeMath.cos(((Number) args[0]).doubleValue()));
+            env.setVariable("math::tan", (Import.FunctionInterface) (args) -> NativeMath.tan(((Number) args[0]).doubleValue()));
+            env.setVariable("math::asin", (Import.FunctionInterface) (args) -> NativeMath.asin(((Number) args[0]).doubleValue()));
+            env.setVariable("math::acos", (Import.FunctionInterface) (args) -> NativeMath.acos(((Number) args[0]).doubleValue()));
+            env.setVariable("math::atan", (Import.FunctionInterface) (args) -> NativeMath.atan(((Number) args[0]).doubleValue()));
+            env.setVariable("math::atan2", (Import.FunctionInterface) (args) -> NativeMath.atan2(((Number) args[0]).doubleValue(), ((Number) args[1]).doubleValue()));
+            env.setVariable("math::sinh", (Import.FunctionInterface) (args) -> NativeMath.sinh(((Number) args[0]).doubleValue()));
+            env.setVariable("math::cosh", (Import.FunctionInterface) (args) -> NativeMath.cosh(((Number) args[0]).doubleValue()));
+            env.setVariable("math::tanh", (Import.FunctionInterface) (args) -> NativeMath.tanh(((Number) args[0]).doubleValue()));
+            env.setVariable("math::asinh", (Import.FunctionInterface) (args) -> NativeMath.asinh(((Number) args[0]).doubleValue()));
+            env.setVariable("math::acosh", (Import.FunctionInterface) (args) -> NativeMath.acosh(((Number) args[0]).doubleValue()));
+            env.setVariable("math::atanh", (Import.FunctionInterface) (args) -> NativeMath.atanh(((Number) args[0]).doubleValue()));
             // Add more math functions as needed
         }
     }
