@@ -552,25 +552,36 @@ public class Executor {
                     switch (expectedReturnType) {
                         case "String":
                             if (!(returnValue instanceof String)) {
-                                throw new RuntimeException("Type error: Return value " + returnValue + " is not a String.");
+                                // If return value is null, allow it
+                                if (returnValue != null) {
+                                    // Convert numbers and other types to String if needed
+                                    returnValue = String.valueOf(returnValue);
+                                }
                             }
                             break;
                         case "Int32":
                         case "Int64":
                             if (!(returnValue instanceof Integer)) {
-                                throw new RuntimeException("Type error: Return value " + returnValue + " is not an Integer.");
+                                if (returnValue instanceof Number) {
+                                    returnValue = ((Number) returnValue).intValue();
+                                } else {
+                                    throw new RuntimeException("Type error: Return value " + returnValue + " is not an Integer.");
+                                }
                             }
                             break;
                         case "Float32":
                             if (!(returnValue instanceof Float)) {
-                                throw new RuntimeException("Type error: Return value " + returnValue + " is not a Float32.");
+                                if (returnValue instanceof Number) {
+                                    returnValue = ((Number) returnValue).floatValue();
+                                } else {
+                                    throw new RuntimeException("Type error: Return value " + returnValue + " is not a Float32.");
+                                }
                             }
                             break;
                         case "Float64":
                             if (!(returnValue instanceof Double)) {
-                                // Convert Integer to Double if necessary
-                                if (returnValue instanceof Integer) {
-                                    returnValue = ((Integer) returnValue).doubleValue();
+                                if (returnValue instanceof Number) {
+                                    returnValue = ((Number) returnValue).doubleValue();
                                 } else {
                                     throw new RuntimeException("Type error: Return value " + returnValue + " is not a Float64.");
                                 }
@@ -578,8 +589,16 @@ public class Executor {
                             break;
                         case "Char":
                             if (!(returnValue instanceof Character)) {
-                                throw new RuntimeException("Type error: Return value " + returnValue + " is not a Character.");
+                                // If it's a single-character string, convert to char
+                                if (returnValue instanceof String && ((String) returnValue).length() == 1) {
+                                    returnValue = ((String) returnValue).charAt(0);
+                                } else {
+                                    throw new RuntimeException("Type error: Return value " + returnValue + " is not a Character.");
+                                }
                             }
+                            break;
+                        case "void":
+                            // Allow any return value for void functions
                             break;
                         default:
                             throw new RuntimeException("Unknown return type annotation: " + expectedReturnType);

@@ -1,0 +1,20 @@
+class mathematics {
+    function sqrt(number: Float64) -> Float64 {
+        return number * 0.5;
+    }
+
+    function square(number: Float64) -> Float64 {
+        return number * number;
+    }
+}
+
+function main() {
+    console.write(mathematics.sqrt(9));
+    console.write(mathematics.square(13));
+}
+
+main();
+
+then output is
+Evaluation error: Undefined variable: mathematics
+Evaluation error: Undefined variable: mathematics

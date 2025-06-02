@@ -1,0 +1,9 @@
+function greeting() {
+    return "Hello, World!";
+}
+
+function main() {
+    console.write(greeting());
+}
+
+main();

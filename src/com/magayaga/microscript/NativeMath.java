@@ -23,4 +23,17 @@ public class NativeMath {
     public static native double log10(double value);
     public static native double log2(double value);
     public static native double log(double value);
+    public static native double sin(double value);
+    public static native double cos(double value);
+    public static native double tan(double value);
+    public static native double asin(double value);
+    public static native double acos(double value);
+    public static native double atan(double value);
+    public static native double atan2(double y, double x);
+    public static native double sinh(double value);
+    public static native double cosh(double value);
+    public static native double tanh(double value);
+    public static native double asinh(double value);
+    public static native double acosh(double value);
+    public static native double atanh(double value);
 }

@@ -362,4 +362,90 @@ public class Parser {
             executor.execute(varName + " = " + valueExpression);
         }
     }
+
+    private void parseClass(int start, int end) {
+        String header = lines.get(start).trim();
+        Pattern classPattern = Pattern.compile("class\\s+(\\w+)\\s*\\{");
+        Matcher classMatcher = classPattern.matcher(header);
+        
+        if (!classMatcher.find()) {
+            throw new RuntimeException("Invalid class declaration syntax");
+        }
+        
+        String className = classMatcher.group(1);
+        Class newClass = new Class(className);
+        
+        // Parse class body
+        for (int i = start + 1; i < end; i++) {
+            String line = lines.get(i).trim();
+            if (line.isEmpty() || line.startsWith("//")) continue;
+            
+            if (line.startsWith("function ")) {
+                int methodEnd = findClosingBrace(i);
+                parseMethod(newClass, i, methodEnd);
+                i = methodEnd;
+            }
+        }
+        
+        // Register the class in the environment BEFORE parsing continues
+        environment.setVariable(className, newClass);
+    }
+
+    private void parseMethod(Class targetClass, int start, int end) {
+        String header = lines.get(start).trim();
+        
+        // Parse method declaration: function name(params) -> returnType {
+        Pattern methodPattern = Pattern.compile("function\\s+(\\w+)\\s*\\(([^)]*)\\)\\s*(->\\s*(\\w+))?\\s*\\{");
+        Matcher methodMatcher = methodPattern.matcher(header);
+        
+        if (!methodMatcher.find()) {
+            throw new RuntimeException("Invalid method declaration syntax: " + header);
+        }
+        
+        String methodName = methodMatcher.group(1);
+        String paramsStr = methodMatcher.group(2);
+        String returnType = methodMatcher.group(4);
+        if (returnType == null) returnType = "void";
+        
+        // Parse parameters
+        List<Parameter> parameters = new ArrayList<>();
+        if (!paramsStr.trim().isEmpty()) {
+            String[] paramPairs = paramsStr.split(",");
+            for (String pair : paramPairs) {
+                String[] parts = pair.trim().split(":");
+                if (parts.length != 2) {
+                    throw new RuntimeException("Invalid parameter syntax: " + pair);
+                }
+                parameters.add(new Parameter(parts[0].trim(), parts[1].trim()));
+            }
+        }
+        
+        // Collect method body
+        List<String> body = new ArrayList<>();
+        for (int i = start + 1; i < end; i++) {
+            body.add(lines.get(i));
+        }
+        
+        // Create and return the method
+        Function method = new Function(methodName, parameters, returnType, body);
+        targetClass.addMethod(method);
+    }
+
+    private void parseProperty(Class targetClass, String declaration) {
+        // Parse property declaration: var name: type = defaultValue
+        Pattern propPattern = Pattern.compile("(var|bool)\\s+(\\w+)\\s*:\\s*(\\w+)\\s*=\\s*(.+)");
+        Matcher propMatcher = propPattern.matcher(declaration);
+        
+        if (propMatcher.find()) {
+            String name = propMatcher.group(2);
+            String type = propMatcher.group(3);
+            String defaultValueExpr = propMatcher.group(4).replace(";", "");
+            
+            Object defaultValue = new Executor(environment).evaluate(defaultValueExpr);
+            Class.Property property = new Class.Property(name, type, defaultValue);
+            targetClass.addProperty(property);
+        } else {
+            throw new RuntimeException("Invalid property declaration: " + declaration);
+        }
+    }
 }
