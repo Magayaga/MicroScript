@@ -22,6 +22,11 @@ public class Parser {
         this.environment = new Environment();
     }
 
+    public Parser(List<String> lines) {
+        this.lines = lines;
+        this.environment = new Environment();
+    }
+
     public void parse() {
         int i = 0;
         boolean hasCStyleMain = false;
@@ -312,6 +317,16 @@ public class Parser {
             String expression = matcher.group(1);
             Executor executor = new Executor(environment);
             executor.execute("console.write(" + expression + ")");
+            return;
+        }
+
+        // Regex to match console.writef statements
+        Pattern writefPattern = Pattern.compile("console.writef\\((.*)\\);");
+        Matcher writefMatcher = writefPattern.matcher(line);
+        if (writefMatcher.matches()) {
+            String expression = writefMatcher.group(1);
+            Executor executor = new Executor(environment);
+            executor.execute("console.writef(" + expression + ")");
             return;
         }
 

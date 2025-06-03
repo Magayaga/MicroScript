@@ -103,7 +103,7 @@ public class MicroScript {
             List<String> preprocessedLines = define.preprocess(lines);
             
             // Parse and execute
-            Parser parser = new Parser(scanner);
+            Parser parser = new Parser(preprocessedLines);
             parser.parse();
             
         } catch (IOException e) {
