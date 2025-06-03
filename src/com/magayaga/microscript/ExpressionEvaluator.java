@@ -495,67 +495,93 @@ public class ExpressionEvaluator {
     private Object parseFactor() {
         skipWhitespace();
         
-        // Handle class method calls (ClassName.methodName)
-        if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '_') {
-            StringBuilder identifier = new StringBuilder();
-            while ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || 
-                   (ch >= '0' && ch <= '9') || ch == '_') {
-                identifier.append((char)ch);
-                nextChar();
-            }
-            skipWhitespace();
-
-            // Check for dot operator for class method access
-            if (ch == '.') {
-                nextChar(); // consume dot
+        // Handle pre-increment and pre-decrement
+        if (ch == '+') {
+            int nextPos = pos + 1;
+            if (nextPos < expression.length() && expression.charAt(nextPos) == '+') {
+                nextChar(); // consume first +
+                nextChar(); // consume second +
                 skipWhitespace();
-
-                // Parse method name
-                StringBuilder methodName = new StringBuilder();
+                
+                // Parse variable name
+                StringBuilder varName = new StringBuilder();
                 while ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || 
                        (ch >= '0' && ch <= '9') || ch == '_') {
-                    methodName.append((char)ch);
+                    varName.append((char)ch);
                     nextChar();
                 }
-                skipWhitespace();
-
-                // Handle class method call with arguments
-                if (ch == '(') {
-                    nextChar(); // consume (
-                    skipWhitespace();
-
-                    // Get class instance
-                    Object classObj = environment.getVariable(identifier.toString());
-                    if (!(classObj instanceof Class)) {
-                        throw new RuntimeException("Undefined class: " + identifier);
-                    }
-                    Class classInstance = (Class) classObj;
-
-                    // Parse arguments
-                    List<Object> args = new ArrayList<>();
-                    if (ch != ')') {  // If not empty arguments
-                        while (true) {
-                            args.add(parseAssignment());
-                            skipWhitespace();
-                            if (ch == ')') {
-                                nextChar();
-                                break;
-                            }
-                            if (ch != ',') {
-                                throw new RuntimeException("Expected ',' or ')' in argument list");
-                            }
-                            nextChar(); // consume ,
-                            skipWhitespace();
-                        }
-                    } else {
-                        nextChar(); // consume )
-                    }
-                    skipWhitespace();
-
-                    // Create instance and invoke method
-                    Class.Instance instance = new Class.Instance(classInstance);
-                    return instance.invokeMethod(methodName.toString(), args.toArray());
+                
+                String variable = varName.toString();
+                Object currentValue = environment.getVariable(variable);
+                
+                if (currentValue == null) {
+                    throw new RuntimeException("Undefined variable: " + variable);
                 }
+                
+                if (!(currentValue instanceof Number)) {
+                    throw new RuntimeException("Cannot increment non-numeric variable: " + variable);
+                }
+                
+                double currentNum = ((Number) currentValue).doubleValue();
+                double newValue = currentNum + 1;
+                
+                // Store and return the new value
+                if (currentValue instanceof Integer) {
+                    environment.setVariable(variable, (int) newValue);
+                    return (int) newValue;
+                } else {
+                    environment.setVariable(variable, newValue);
+                    return newValue;
+                }
+            } else {
+                nextChar(); // consume +
+                skipWhitespace();
+                return parseFactor(); // unary plus
+            }
+        }
+        
+        if (ch == '-') {
+            int nextPos = pos + 1;
+            if (nextPos < expression.length() && expression.charAt(nextPos) == '-') {
+                nextChar(); // consume first -
+                nextChar(); // consume second -
+                skipWhitespace();
+                
+                // Parse variable name
+                StringBuilder varName = new StringBuilder();
+                while ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || 
+                       (ch >= '0' && ch <= '9') || ch == '_') {
+                    varName.append((char)ch);
+                    nextChar();
+                }
+                
+                String variable = varName.toString();
+                Object currentValue = environment.getVariable(variable);
+                
+                if (currentValue == null) {
+                    throw new RuntimeException("Undefined variable: " + variable);
+                }
+                
+                if (!(currentValue instanceof Number)) {
+                    throw new RuntimeException("Cannot decrement non-numeric variable: " + variable);
+                }
+                
+                double currentNum = ((Number) currentValue).doubleValue();
+                double newValue = currentNum - 1;
+                
+                // Store and return the new value
+                if (currentValue instanceof Integer) {
+                    environment.setVariable(variable, (int) newValue);
+                    return (int) newValue;
+                } else {
+                    environment.setVariable(variable, newValue);
+                    return newValue;
+                }
+            } else {
+                nextChar(); // consume -
+                skipWhitespace();
+                Object factor = parseFactor();
+                return -objectToDouble(factor); // unary minus
             }
         }
 

@@ -29,6 +29,8 @@ public class Executor {
     private static final Pattern PRE_DECREMENT_PATTERN = Pattern.compile("--([a-zA-Z_][a-zA-Z0-9_]*)\\s*;?");
     private static final Pattern POST_INCREMENT_PATTERN = Pattern.compile("([a-zA-Z_][a-zA-Z0-9_]*)\\+\\+\\s*;?");
     private static final Pattern POST_DECREMENT_PATTERN = Pattern.compile("([a-zA-Z_][a-zA-Z0-9_]*)--\\s*;?");
+    private static final Pattern DEFINE_FUNC_MACRO_PATTERN =
+        Pattern.compile("#define\\s+([A-Z_][A-Z0-9_]*)\\s*\\(([^)]*)\\)\\s+(.+)");
 
     public Executor(Environment environment) {
         this.environment = environment;
@@ -552,36 +554,25 @@ public class Executor {
                     switch (expectedReturnType) {
                         case "String":
                             if (!(returnValue instanceof String)) {
-                                // If return value is null, allow it
-                                if (returnValue != null) {
-                                    // Convert numbers and other types to String if needed
-                                    returnValue = String.valueOf(returnValue);
-                                }
+                                throw new RuntimeException("Type error: Return value " + returnValue + " is not a String.");
                             }
                             break;
                         case "Int32":
                         case "Int64":
                             if (!(returnValue instanceof Integer)) {
-                                if (returnValue instanceof Number) {
-                                    returnValue = ((Number) returnValue).intValue();
-                                } else {
-                                    throw new RuntimeException("Type error: Return value " + returnValue + " is not an Integer.");
-                                }
+                                throw new RuntimeException("Type error: Return value " + returnValue + " is not an Integer.");
                             }
                             break;
                         case "Float32":
                             if (!(returnValue instanceof Float)) {
-                                if (returnValue instanceof Number) {
-                                    returnValue = ((Number) returnValue).floatValue();
-                                } else {
-                                    throw new RuntimeException("Type error: Return value " + returnValue + " is not a Float32.");
-                                }
+                                throw new RuntimeException("Type error: Return value " + returnValue + " is not a Float32.");
                             }
                             break;
                         case "Float64":
                             if (!(returnValue instanceof Double)) {
-                                if (returnValue instanceof Number) {
-                                    returnValue = ((Number) returnValue).doubleValue();
+                                // Convert Integer to Double if necessary
+                                if (returnValue instanceof Integer) {
+                                    returnValue = ((Integer) returnValue).doubleValue();
                                 } else {
                                     throw new RuntimeException("Type error: Return value " + returnValue + " is not a Float64.");
                                 }
@@ -589,16 +580,8 @@ public class Executor {
                             break;
                         case "Char":
                             if (!(returnValue instanceof Character)) {
-                                // If it's a single-character string, convert to char
-                                if (returnValue instanceof String && ((String) returnValue).length() == 1) {
-                                    returnValue = ((String) returnValue).charAt(0);
-                                } else {
-                                    throw new RuntimeException("Type error: Return value " + returnValue + " is not a Character.");
-                                }
+                                throw new RuntimeException("Type error: Return value " + returnValue + " is not a Character.");
                             }
-                            break;
-                        case "void":
-                            // Allow any return value for void functions
                             break;
                         default:
                             throw new RuntimeException("Unknown return type annotation: " + expectedReturnType);
