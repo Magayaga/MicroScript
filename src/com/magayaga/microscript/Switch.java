@@ -53,15 +53,13 @@ public class Switch {
                 continue;
             }
             
-            // Check if we've reached the end of switch cases or block
-            if (line.equals("}") || line.startsWith("}") || 
-                (!line.contains("=>") && !line.matches("^\\s*\\d+.*"))) {
+            // Check for end of function/block - stop processing switch cases
+            if (line.equals("}") || line.startsWith("}")) {
                 break;
             }
             
-            // Skip lines that are clearly not case statements
-            if (line.equals("{") || line.startsWith("function") || 
-                line.startsWith("var ") || line.startsWith("return")) {
+            // Check if we've reached the end of switch cases (no more => patterns)
+            if (!line.contains("=>")) {
                 break;
             }
             
@@ -92,11 +90,11 @@ public class Switch {
                     throw new RuntimeException("Invalid numeric case value: " + caseValueStr, e);
                 }
             } else {
-                // If it's not a valid case statement and contains '=>', it might be malformed
+                // If line doesn't match case pattern but contains =>, it's malformed
                 if (line.contains("=>")) {
                     throw new RuntimeException("Invalid case statement syntax: " + line);
                 }
-                // Otherwise, we've reached the end of the switch block
+                // Otherwise, we've reached end of switch cases
                 break;
             }
             
