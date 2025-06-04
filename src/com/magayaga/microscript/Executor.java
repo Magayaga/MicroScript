@@ -15,7 +15,8 @@ import java.io.InputStreamReader;
 import java.util.Arrays;
 
 public class Executor {
-    private final Environment environment;
+    /* Change from private to package-private (default) access */
+    final Environment environment;
 
     // Pre-compiled regex patterns
     private static final Pattern CONSOLE_WRITE_PATTERN = Pattern.compile("console\\.write\\((.*)\\);");
@@ -23,15 +24,16 @@ public class Executor {
     private static final Pattern FUNCTION_CALL_PATTERN = Pattern.compile("(\\w+)\\((.*)\\)");
     private static final Pattern STRING_TEMPLATE_EXPR_PATTERN = Pattern.compile("\\{([^{}]+)\\}");
     private static final Pattern STRING_TEMPLATE_POSITIONAL_PATTERN = Pattern.compile("\\{\\}");
+    private static final Pattern SWITCH_DETECT_PATTERN = Pattern.compile("^\\s*switch\\s*\\(");
+    private static final Pattern DEFINE_FUNC_MACRO_PATTERN =
+        Pattern.compile("#define\\s+([A-Z_][A-Z0-9_]*)\\s*\\(([^)]*)\\)\\s+(.+)");
+    private static final Pattern CONSOLE_WRITEF_PATTERN = Pattern.compile("console\\.writef\\((.*)\\);");
     
     // Patterns for increment/decrement operations
     private static final Pattern PRE_INCREMENT_PATTERN = Pattern.compile("\\+\\+([a-zA-Z_][a-zA-Z0-9_]*)\\s*;?");
     private static final Pattern PRE_DECREMENT_PATTERN = Pattern.compile("--([a-zA-Z_][a-zA-Z0-9_]*)\\s*;?");
     private static final Pattern POST_INCREMENT_PATTERN = Pattern.compile("([a-zA-Z_][a-zA-Z0-9_]*)\\+\\+\\s*;?");
     private static final Pattern POST_DECREMENT_PATTERN = Pattern.compile("([a-zA-Z_][a-zA-Z0-9_]*)--\\s*;?");
-    private static final Pattern DEFINE_FUNC_MACRO_PATTERN =
-        Pattern.compile("#define\\s+([A-Z_][A-Z0-9_]*)\\s*\\(([^)]*)\\)\\s+(.+)");
-    private static final Pattern CONSOLE_WRITEF_PATTERN = Pattern.compile("console\\.writef\\((.*)\\);");
 
     public Executor(Environment environment) {
         this.environment = environment;
@@ -329,6 +331,13 @@ public class Executor {
                     throw new RuntimeException("Syntax error in list declaration: " + expression);
                 }
             }
+
+            else if (expression.trim().startsWith("switch")) {
+                // Switch statements should be handled by Switch class
+                // but this is for direct execution from command line or REPL
+                Switch.processSwitchStatement(Arrays.asList(expression), 0, this);
+                return;
+            }
             
             else if (expression.startsWith("return")) {
                 // Handle return statements
@@ -611,6 +620,20 @@ public class Executor {
                     i = newIndex - 1; // -1 because the loop will increment i
                     continue;
                 }
+
+                // Handle switch statements
+                if (line.startsWith("switch")) {
+                    // Process the switch statement
+                    int newIndex = Switch.processSwitchStatement(body, i, new Executor(localEnv));
+                    
+                    // Ensure we're making progress
+                    if (newIndex <= i) {
+                        throw new RuntimeException("Error processing switch statement at line: " + line);
+                    }
+                    
+                    i = newIndex - 1; // -1 because the loop will increment i
+                    continue;
+                }
                 
                 // Handle return statements
                 if (line.startsWith("return")) {
@@ -669,6 +692,51 @@ public class Executor {
                 evaluatedArgs[i] = evaluate(args[i]);
             }
             return ((Import.FunctionInterface) nativeFunc).call(evaluatedArgs);
+        }
+        // Support for higher-order functions: map, filter, foldlt, foldrt
+        if (functionName.equals("map")) {
+            if (args.length != 2) throw new RuntimeException("map expects 2 arguments: lambda, list");
+            // Lambda as string, list as comma-separated string
+            String lambda = args[0];
+            String listStr = args[1];
+            List<Object> list = new ArrayList<>();
+            for (String s : listStr.replace("[","").replace("]","").split(",")) {
+                list.add(evaluate(s.trim()));
+            }
+            java.util.function.Function<Object, Object> fn = new Parser(new ArrayList<>()).makeUnaryLambda(lambda, this);
+            return FunctionHigherOrder.map(fn, list);
+        } else if (functionName.equals("filter")) {
+            if (args.length != 2) throw new RuntimeException("filter expects 2 arguments: lambda, list");
+            String lambda = args[0];
+            String listStr = args[1];
+            List<Object> list = new ArrayList<>();
+            for (String s : listStr.replace("[","").replace("]","").split(",")) {
+                list.add(evaluate(s.trim()));
+            }
+            java.util.function.Function<Object, Boolean> pred = new Parser(new ArrayList<>()).makePredicateLambda(lambda, this);
+            return FunctionHigherOrder.filter(pred, list);
+        } else if (functionName.equals("foldlt")) {
+            if (args.length != 3) throw new RuntimeException("foldlt expects 3 arguments: lambda, initial, list");
+            String lambda = args[0];
+            Object initial = evaluate(args[1]);
+            String listStr = args[2];
+            List<Object> list = new ArrayList<>();
+            for (String s : listStr.replace("[","").replace("]","").split(",")) {
+                list.add(evaluate(s.trim()));
+            }
+            java.util.function.BiFunction<Object, Object, Object> bifn = new Parser(new ArrayList<>()).makeBinaryLambda(lambda, this);
+            return FunctionHigherOrder.foldlt(bifn, initial, list);
+        } else if (functionName.equals("foldrt")) {
+            if (args.length != 3) throw new RuntimeException("foldrt expects 3 arguments: lambda, initial, list");
+            String lambda = args[0];
+            Object initial = evaluate(args[1]);
+            String listStr = args[2];
+            List<Object> list = new ArrayList<>();
+            for (String s : listStr.replace("[","").replace("]","").split(",")) {
+                list.add(evaluate(s.trim()));
+            }
+            java.util.function.BiFunction<Object, Object, Object> bifn = new Parser(new ArrayList<>()).makeBinaryLambda(lambda, this);
+            return FunctionHigherOrder.foldrt(bifn, initial, list);
         }
         throw new RuntimeException("Function not found: " + functionName);
     }

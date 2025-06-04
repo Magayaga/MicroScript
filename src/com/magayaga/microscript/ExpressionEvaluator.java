@@ -39,6 +39,7 @@ public class ExpressionEvaluator {
         Object x = parseAssignment(); // Start with assignment (walrus operator)
         skipWhitespace(); // Skip any trailing whitespace
         if (pos < expression.length()) throw new RuntimeException("Unexpected: " + (char) ch);
+        // Optionally: recognize direct higher-order function calls in the future
         return x;
     }
 

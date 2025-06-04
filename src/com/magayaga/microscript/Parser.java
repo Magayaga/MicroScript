@@ -463,4 +463,39 @@ public class Parser {
             throw new RuntimeException("Invalid property declaration: " + declaration);
         }
     }
+
+    /**
+     * Creates a unary lambda function from a string expression
+     */
+    public java.util.function.Function<Object, Object> makeUnaryLambda(String lambda, Executor executor) {
+        return (arg) -> {
+            Environment localEnv = new Environment(executor.environment);
+            localEnv.setVariable("it", arg);  // Use 'it' as default parameter name
+            return new Executor(localEnv).evaluate(lambda);
+        };
+    }
+
+    /**
+     * Creates a predicate lambda function from a string expression
+     */
+    public java.util.function.Function<Object, Boolean> makePredicateLambda(String lambda, Executor executor) {
+        return (arg) -> {
+            Environment localEnv = new Environment(executor.environment);
+            localEnv.setVariable("it", arg);
+            Object result = new Executor(localEnv).evaluate(lambda);
+            return result instanceof Boolean ? (Boolean) result : false;
+        };
+    }
+
+    /**
+     * Creates a binary lambda function from a string expression
+     */
+    public java.util.function.BiFunction<Object, Object, Object> makeBinaryLambda(String lambda, Executor executor) {
+        return (arg1, arg2) -> {
+            Environment localEnv = new Environment(executor.environment);
+            localEnv.setVariable("acc", arg1);  // First argument is accumulator
+            localEnv.setVariable("it", arg2);   // Second argument is current item
+            return new Executor(localEnv).evaluate(lambda);
+        };
+    }
 }
