@@ -24,7 +24,7 @@ public class Executor {
     private static final Pattern FUNCTION_CALL_PATTERN = Pattern.compile("(\\w+)\\((.*)\\)");
     private static final Pattern STRING_TEMPLATE_EXPR_PATTERN = Pattern.compile("\\{([^{}]+)\\}");
     private static final Pattern STRING_TEMPLATE_POSITIONAL_PATTERN = Pattern.compile("\\{\\}");
-    private static final Pattern SWITCH_DETECT_PATTERN = Pattern.compile("^\\s*switch\\s*\\(");
+    private static final Pattern SWITCH_DETECT_PATTERN = Pattern.compile("^\\s*switch\\s*\\(.*\\)\\s*\\{?\\s*$");
     private static final Pattern DEFINE_FUNC_MACRO_PATTERN =
         Pattern.compile("#define\\s+([A-Z_][A-Z0-9_]*)\\s*\\(([^)]*)\\)\\s+(.+)");
     private static final Pattern CONSOLE_WRITEF_PATTERN = Pattern.compile("console\\.writef\\((.*)\\);");
@@ -333,9 +333,12 @@ public class Executor {
             }
 
             else if (expression.trim().startsWith("switch")) {
-                // Switch statements should be handled by Switch class
-                // but this is for direct execution from command line or REPL
-                Switch.processSwitchStatement(Arrays.asList(expression), 0, this);
+                // Handle both inline and block form of switch statements
+                String trimmedExpr = expression.trim();
+                if (trimmedExpr.endsWith("{")) {
+                    trimmedExpr = trimmedExpr.substring(0, trimmedExpr.length() - 1).trim();
+                }
+                Switch.processSwitchStatement(Arrays.asList(trimmedExpr, "{"), 0, this);
                 return;
             }
             

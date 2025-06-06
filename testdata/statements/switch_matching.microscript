@@ -1,0 +1,36 @@
+function main() {
+    var day: Float64 = 2
+    switch (day) {
+        1 => console.write("Monday");,
+        2 => console.write("Tuesday");,
+        3 => console.write("Wednesday");,
+        4 => console.write("Thursday");,
+        5 => console.write("Friday");,
+        _ => console.write("Invalid");
+    }
+
+    
+    var num: Float64 = 8
+    switch (num) {
+        1 | 3 | 5 | 7 | 9 => console.write("Odd");,
+        2 | 4 | 6 | 8 => console.write("Even");,
+        _ => console.write("Invalid");
+    }
+
+    var animal: String = "dog"
+    switch (animal) {
+        "dog" => console.write("DOG");,
+        "cat" => console.write("CAT");,
+        _ => console.write("Invalid");
+    }
+
+    var score: Float64 = 90
+    switch (score) {
+        98..=100 => console.write("With Highest Honors");,
+        95..=97 => console.write("With High Honors");,
+        90..=94 => console.write("With Honors");,
+        _ => console.write("I'm sorry, Without honors");
+    }
+}
+
+main();
