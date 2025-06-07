@@ -13,6 +13,19 @@ import java.util.regex.Pattern;
 
 public class Statements {
     
+    // Exception classes for loop control
+    public static class BreakException extends RuntimeException {
+        public BreakException() {
+            super("Break statement executed");
+        }
+    }
+    
+    public static class ContinueException extends RuntimeException {
+        public ContinueException() {
+            super("Continue statement executed");
+        }
+    }
+    
     /**
      * Processes conditional statements (if/elif/else blocks) in the code
      * @param lines The list of code lines to process
@@ -145,6 +158,87 @@ public class Statements {
     }
     
     /**
+     * Processes loop statements (for/while loops) with break/continue support
+     * @param lines The list of code lines to process
+     * @param startIndex The starting index of the loop statement
+     * @param executor The executor to execute code blocks with
+     * @return The index after the entire loop block
+     */
+    public static int processLoopStatement(List<String> lines, int startIndex, Executor executor) {
+        int currentIndex = startIndex;
+        Object[] lineAndIndex = getNonEmptyNonCommentLineWithIndex(lines, currentIndex);
+        String line = (String) lineAndIndex[0];
+        currentIndex = (int) lineAndIndex[1];
+        
+        if (line != null && (line.startsWith("for") || line.startsWith("while"))) {
+            // Find the opening brace for the loop block
+            int blockStartIndex = currentIndex;
+            if (!line.contains("{")) {
+                blockStartIndex = findNextOpeningBrace(lines, currentIndex + 1);
+                if (blockStartIndex == -1) {
+                    throw new RuntimeException("Missing opening brace for loop statement at or after line: " + line);
+                }
+            }
+            
+            // Find the end of the loop block
+            int blockEndIndex = findMatchingClosingBrace(lines, blockStartIndex);
+            if (blockEndIndex == -1) {
+                throw new RuntimeException("Missing closing brace for loop statement starting at line: " + line);
+            }
+            
+            // Execute the loop with break/continue handling
+            executeLoopBlock(lines, blockStartIndex + 1, blockEndIndex, executor, line);
+            
+            return blockEndIndex + 1;
+        }
+        
+        return startIndex + 1;
+    }
+    
+    /**
+     * Execute a loop block with break/continue support
+     * @param lines List of code lines
+     * @param startIndex Start index of the loop body
+     * @param endIndex End index of the loop body
+     * @param executor The executor to execute the lines with
+     * @param loopDeclaration The loop declaration line (for condition checking)
+     */
+    private static void executeLoopBlock(List<String> lines, int startIndex, int endIndex, Executor executor, String loopDeclaration) {
+        // This is a simplified example - you'll need to implement actual loop logic
+        // based on your loop syntax (for/while conditions, initialization, increment, etc.)
+        
+        boolean isWhileLoop = loopDeclaration.startsWith("while");
+        boolean isForLoop = loopDeclaration.startsWith("for");
+        
+        if (isWhileLoop) {
+            // Extract while condition
+            Pattern whilePattern = Pattern.compile("while\\s*\\((.+?)\\)");
+            Matcher whileMatcher = whilePattern.matcher(loopDeclaration);
+            if (!whileMatcher.find()) {
+                throw new RuntimeException("Invalid while loop syntax: " + loopDeclaration);
+            }
+            String condition = whileMatcher.group(1).trim();
+            
+            // Execute while loop
+            while (isTrue(executor.evaluate(condition))) {
+                try {
+                    executeBlock(lines, startIndex, endIndex, executor);
+                } catch (BreakException e) {
+                    // Break out of the loop
+                    break;
+                } catch (ContinueException e) {
+                    // Continue to next iteration
+                    continue;
+                }
+            }
+        } else if (isForLoop) {
+            // For loop implementation would go here
+            // This is a placeholder - implement based on your for loop syntax
+            throw new RuntimeException("For loop implementation needed");
+        }
+    }
+    
+    /**
      * Find the matching closing brace for a block starting with an opening brace
      * @param lines List of code lines
      * @param openingBraceLineIndex The line index containing the opening brace
@@ -241,9 +335,25 @@ public class Statements {
                 continue;
             }
             
+            // Handle break statement
+            if (line.equals("break;") || line.equals("break")) {
+                throw new BreakException();
+            }
+            
+            // Handle continue statement
+            if (line.equals("continue;") || line.equals("continue")) {
+                throw new ContinueException();
+            }
+            
             // Process nested if statements
             if (line.startsWith("if")) {
                 i = processConditionalStatement(lines, i, executor) - 1; // -1 because the loop will increment i
+                continue;
+            }
+            
+            // Process nested loop statements
+            if (line.startsWith("for") || line.startsWith("while")) {
+                i = processLoopStatement(lines, i, executor) - 1; // -1 because the loop will increment i
                 continue;
             }
             
