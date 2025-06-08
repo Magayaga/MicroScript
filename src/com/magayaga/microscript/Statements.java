@@ -70,7 +70,12 @@ public class Statements {
             
             // Execute the if block if condition is true
             if (conditionValue) {
-                executeBlock(lines, blockStartIndex + 1, blockEndIndex, executor);
+                try {
+                    executeBlock(lines, blockStartIndex + 1, blockEndIndex, executor);
+                } catch (BreakException | ContinueException e) {
+                    // Re-throw loop control exceptions so they can be handled by the loop
+                    throw e;
+                }
                 // Skip to the end of the entire conditional structure
                 return findEndOfConditionalStructure(lines, blockEndIndex + 1);
             }
@@ -115,7 +120,12 @@ public class Statements {
                     
                     // Execute the elif block if condition is true
                     if (elifValue) {
-                        executeBlock(lines, elifBlockStartIndex + 1, elifBlockEndIndex, executor);
+                        try {
+                            executeBlock(lines, elifBlockStartIndex + 1, elifBlockEndIndex, executor);
+                        } catch (BreakException | ContinueException e) {
+                            // Re-throw loop control exceptions so they can be handled by the loop
+                            throw e;
+                        }
                         // Skip to the end of the entire conditional structure
                         return findEndOfConditionalStructure(lines, elifBlockEndIndex + 1);
                     }
@@ -139,7 +149,12 @@ public class Statements {
                         throw new RuntimeException("Missing closing brace for else statement at line: " + line);
                     }
                     // Execute the else block
-                    executeBlock(lines, elseBlockStartIndex + 1, elseBlockEndIndex, executor);
+                    try {
+                        executeBlock(lines, elseBlockStartIndex + 1, elseBlockEndIndex, executor);
+                    } catch (BreakException | ContinueException e) {
+                        // Re-throw loop control exceptions so they can be handled by the loop
+                        throw e;
+                    }
                     // Return the index after the else block
                     return elseBlockEndIndex + 1;
                 }
@@ -345,9 +360,14 @@ public class Statements {
                 throw new ContinueException();
             }
             
-            // Process nested if statements
+            // Process nested if statements - IMPORTANT: Let break/continue exceptions bubble up
             if (line.startsWith("if")) {
-                i = processConditionalStatement(lines, i, executor) - 1; // -1 because the loop will increment i
+                try {
+                    i = processConditionalStatement(lines, i, executor) - 1; // -1 because the loop will increment i
+                } catch (BreakException | ContinueException e) {
+                    // Re-throw these exceptions so they reach the loop that should handle them
+                    throw e;
+                }
                 continue;
             }
             
