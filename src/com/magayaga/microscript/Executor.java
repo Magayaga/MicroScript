@@ -20,6 +20,7 @@ public class Executor {
 
     // Pre-compiled regex patterns
     private static final Pattern CONSOLE_WRITE_PATTERN = Pattern.compile("console\\.write\\((.*)\\);");
+    private static final Pattern CONSOLE_WRITEF_PATTERN = Pattern.compile("console\\.writef\\((.*)\\);");
     private static final Pattern CONSOLE_SYSTEM_PATTERN = Pattern.compile("console\\.system\\((.*)\\);");
     private static final Pattern FUNCTION_CALL_PATTERN = Pattern.compile("(\\w+)\\((.*)\\)");
     private static final Pattern STRING_TEMPLATE_EXPR_PATTERN = Pattern.compile("\\{([^{}]+)\\}");
@@ -27,7 +28,6 @@ public class Executor {
     private static final Pattern SWITCH_DETECT_PATTERN = Pattern.compile("^\\s*switch\\s*\\(.*\\)\\s*\\{?\\s*$");
     private static final Pattern DEFINE_FUNC_MACRO_PATTERN =
         Pattern.compile("#define\\s+([A-Z_][A-Z0-9_]*)\\s*\\(([^)]*)\\)\\s+(.+)");
-    private static final Pattern CONSOLE_WRITEF_PATTERN = Pattern.compile("console\\.writef\\((.*)\\);");
     
     // Patterns for increment/decrement operations
     private static final Pattern PRE_INCREMENT_PATTERN = Pattern.compile("\\+\\+([a-zA-Z_][a-zA-Z0-9_]*)\\s*;?");
@@ -49,6 +49,64 @@ public class Executor {
             result.add(part.trim());
         }
         return result;
+    }
+
+    /**
+     * Process escape sequences in a string
+     * @param input The input string that may contain escape sequences
+     * @return The processed string with escape sequences converted
+     */
+    private String processEscapeSequences(String input) {
+        if (input == null) {
+            return null;
+        }
+        
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < input.length(); i++) {
+            char c = input.charAt(i);
+            
+            if (c == '\\' && i + 1 < input.length()) {
+                char next = input.charAt(i + 1);
+                switch (next) {
+                    case 'n':
+                        result.append('\n');
+                        i++; // Skip the next character
+                        break;
+                    case 't':
+                        result.append('\t');
+                        i++; // Skip the next character
+                        break;
+                    case 'r':
+                        result.append('\r');
+                        i++; // Skip the next character
+                        break;
+                    case '\\':
+                        result.append('\\');
+                        i++; // Skip the next character
+                        break;
+                    case '"':
+                        result.append('"');
+                        i++; // Skip the next character
+                        break;
+                    case '\'':
+                        result.append('\'');
+                        i++; // Skip the next character
+                        break;
+                    case '0':
+                        result.append('\0');
+                        i++; // Skip the next character
+                        break;
+                    default:
+                        // If it's not a recognized escape sequence, keep the backslash
+                        result.append(c);
+                        break;
+                }
+            } else {
+                result.append(c);
+            }
+        }
+        
+        return result.toString();
     }
 
     public void execute(String expression) {
@@ -89,137 +147,145 @@ public class Executor {
             }
 
             if (expression.startsWith("console.write")) {
-                // Extract the content inside console.write()
-                Matcher matcher = CONSOLE_WRITE_PATTERN.matcher(expression);
-                if (matcher.matches()) {
-                    String innerContent = matcher.group(1).trim();
-                    
-                    // Split the content by commas, but respect quotes and parentheses
-                    List<String> arguments = splitArguments(innerContent);
-                    
-                    if (arguments.isEmpty()) {
-                        throw new RuntimeException("console.write() requires at least one argument");
-                    }
-                    
-                    // Process first argument
-                    Object firstArg = evaluate(arguments.get(0));
-                    
-                    // Handle case where first argument is not a string template
-                    if (!(firstArg instanceof String)) {
-                        // For non-string values, just print them directly
-                        System.out.println(firstArg);
-                        return;
-                    }
-                    
-                    // Process as string template if it's a string
-                    String template = (String) firstArg;
-                    
-                    // Process the template with expressions - {expression} style
-                    StringBuffer output = new StringBuffer();
-                    Matcher placeholderMatcher = STRING_TEMPLATE_EXPR_PATTERN.matcher(template);
-                    
-                    while (placeholderMatcher.find()) {
-                        String expr = placeholderMatcher.group(1).trim();
+                // Check if it's console.writef first (more specific match)
+                if (expression.startsWith("console.writef")) {
+                    // Extract the content inside console.writef()
+                    Matcher matcher = CONSOLE_WRITEF_PATTERN.matcher(expression);
+                    if (matcher.matches()) {
+                        String innerContent = matcher.group(1).trim();
                         
-                        try {
-                            // Evaluate the expression inside the braces
-                            Object result = evaluate(expr);
-                            // Replace with the string representation of the result
-                            placeholderMatcher.appendReplacement(output, result.toString().replace("$", "\\$"));
+                        // Split the content by commas, but respect quotes and parentheses
+                        List<String> arguments = splitArguments(innerContent);
+                        
+                        if (arguments.isEmpty()) {
+                            throw new RuntimeException("console.writef() requires at least one argument");
                         }
                         
-                        catch (Exception e) {
-                            // If evaluation fails, leave the placeholder as is
-                            placeholderMatcher.appendReplacement(output, "{" + expr + "}");
-                        }
-                    }
-                    placeholderMatcher.appendTail(output);
-                    
-                    // Process positional placeholders - {} style
-                    String result = output.toString();
-                    if (arguments.size() > 1) {
-                        // If there are additional arguments, handle positional placeholders
-                        StringBuffer positionalOutput = new StringBuffer();
-                        Matcher positionalMatcher = STRING_TEMPLATE_POSITIONAL_PATTERN.matcher(result);
+                        // Process first argument
+                        Object firstArg = evaluate(arguments.get(0));
                         
-                        int argIndex = 1; // Start from the second argument
-                        while (positionalMatcher.find() && argIndex < arguments.size()) {
-                            Object argValue = evaluate(arguments.get(argIndex++));
-                            positionalMatcher.appendReplacement(positionalOutput, 
-                                argValue == null ? "null" : argValue.toString().replace("$", "\\$"));
+                        // Handle case where first argument is not a string template
+                        if (!(firstArg instanceof String)) {
+                            // For non-string values, just print them directly without newline
+                            System.out.print(firstArg);
+                            return;
                         }
-                        positionalMatcher.appendTail(positionalOutput);
-                        result = positionalOutput.toString();
+                        
+                        // Process as string template if it's a string
+                        String template = (String) firstArg;
+                        
+                        // Process escape sequences first
+                        template = processEscapeSequences(template);
+                        
+                        // Process the template with expressions - {expression} style
+                        StringBuffer output = new StringBuffer();
+                        Matcher placeholderMatcher = STRING_TEMPLATE_EXPR_PATTERN.matcher(template);
+                        
+                        while (placeholderMatcher.find()) {
+                            String expr = placeholderMatcher.group(1).trim();
+                            
+                            try {
+                                // Evaluate the expression inside the braces
+                                Object result = evaluate(expr);
+                                // Replace with the string representation of the result
+                                placeholderMatcher.appendReplacement(output, result.toString().replace("$", "\\$"));
+                            }
+                            
+                            catch (Exception e) {
+                                // If evaluation fails, leave the placeholder as is
+                                placeholderMatcher.appendReplacement(output, "{" + expr + "}");
+                            }
+                        }
+                        placeholderMatcher.appendTail(output);
+                        
+                        // Process positional placeholders - {} style
+                        String result = output.toString();
+                        if (arguments.size() > 1) {
+                            // If there are additional arguments, handle positional placeholders
+                            StringBuffer positionalOutput = new StringBuffer();
+                            Matcher positionalMatcher = STRING_TEMPLATE_POSITIONAL_PATTERN.matcher(result);
+                            
+                            int argIndex = 1; // Start from the second argument
+                            while (positionalMatcher.find() && argIndex < arguments.size()) {
+                                Object argValue = evaluate(arguments.get(argIndex++));
+                                positionalMatcher.appendReplacement(positionalOutput, 
+                                    argValue == null ? "null" : argValue.toString().replace("$", "\\$"));
+                            }
+                            positionalMatcher.appendTail(positionalOutput);
+                            result = positionalOutput.toString();
+                        }
+                        
+                        // Print without newline for console.writef
+                        System.out.print(result);
                     }
-                    
-                    System.out.println(result);
                 }
-            }
-            
-            else if (expression.startsWith("console.writef")) {
-                // Extract the content inside console.writef()
-                Matcher matcher = CONSOLE_WRITEF_PATTERN.matcher(expression);
-                if (matcher.matches()) {
-                    String innerContent = matcher.group(1).trim();
-                    
-                    // Split the content by commas, but respect quotes and parentheses
-                    List<String> arguments = splitArguments(innerContent);
-                    
-                    if (arguments.isEmpty()) {
-                        throw new RuntimeException("console.writef() requires at least one argument");
-                    }
-                    
-                    // Process first argument
-                    Object firstArg = evaluate(arguments.get(0));
-                    
-                    // Handle case where first argument is not a string template
-                    if (!(firstArg instanceof String)) {
-                        // For non-string values, just print them directly
-                        System.out.print(firstArg);
-                        return;
-                    }
-                    
-                    // Process as string template if it's a string
-                    String template = (String) firstArg;
-                    
-                    // Process the template with expressions - {expression} style
-                    StringBuffer output = new StringBuffer();
-                    Matcher placeholderMatcher = STRING_TEMPLATE_EXPR_PATTERN.matcher(template);
-                    
-                    while (placeholderMatcher.find()) {
-                        String expr = placeholderMatcher.group(1).trim();
+                else {
+                    // Handle regular console.write (with newline)
+                    // Extract the content inside console.write()
+                    Matcher matcher = CONSOLE_WRITE_PATTERN.matcher(expression);
+                    if (matcher.matches()) {
+                        String innerContent = matcher.group(1).trim();
                         
-                        try {
-                            // Evaluate the expression inside the braces
-                            Object result = evaluate(expr);
-                            // Replace with the string representation of the result
-                            placeholderMatcher.appendReplacement(output, result.toString().replace("$", "\\$"));
+                        // Split the content by commas, but respect quotes and parentheses
+                        List<String> arguments = splitArguments(innerContent);
+                        
+                        if (arguments.isEmpty()) {
+                            throw new RuntimeException("console.write() requires at least one argument");
                         }
                         
-                        catch (Exception e) {
-                            // If evaluation fails, leave the placeholder as is
-                            placeholderMatcher.appendReplacement(output, "{" + expr + "}");
-                        }
-                    }
-                    placeholderMatcher.appendTail(output);
-                    
-                    // Process positional placeholders - {} style
-                    String result = output.toString();
-                    if (arguments.size() > 1) {
-                        // If there are additional arguments, handle positional placeholders
-                        StringBuffer positionalOutput = new StringBuffer();
-                        Matcher positionalMatcher = STRING_TEMPLATE_POSITIONAL_PATTERN.matcher(result);
+                        // Process first argument
+                        Object firstArg = evaluate(arguments.get(0));
                         
-                        int argIndex = 1; // Start from the second argument
-                        while (positionalMatcher.find() && argIndex < arguments.size()) {
-                            Object argValue = evaluate(arguments.get(argIndex++));
-                            positionalMatcher.appendReplacement(positionalOutput, 
-                                argValue == null ? "null" : argValue.toString().replace("$", "\\$"));
+                        // Handle case where first argument is not a string template
+                        if (!(firstArg instanceof String)) {
+                            // For non-string values, just print them directly
+                            System.out.println(firstArg);
+                            return;
                         }
-                        positionalMatcher.appendTail(positionalOutput);
-                        result = positionalOutput.toString();
+                        
+                        // Process as string template if it's a string
+                        String template = (String) firstArg;
+                        
+                        // Process the template with expressions - {expression} style
+                        StringBuffer output = new StringBuffer();
+                        Matcher placeholderMatcher = STRING_TEMPLATE_EXPR_PATTERN.matcher(template);
+                        
+                        while (placeholderMatcher.find()) {
+                            String expr = placeholderMatcher.group(1).trim();
+                            
+                            try {
+                                // Evaluate the expression inside the braces
+                                Object result = evaluate(expr);
+                                // Replace with the string representation of the result
+                                placeholderMatcher.appendReplacement(output, result.toString().replace("$", "\\$"));
+                            }
+                            
+                            catch (Exception e) {
+                                // If evaluation fails, leave the placeholder as is
+                                placeholderMatcher.appendReplacement(output, "{" + expr + "}");
+                            }
+                        }
+                        placeholderMatcher.appendTail(output);
+                        
+                        // Process positional placeholders - {} style
+                        String result = output.toString();
+                        if (arguments.size() > 1) {
+                            // If there are additional arguments, handle positional placeholders
+                            StringBuffer positionalOutput = new StringBuffer();
+                            Matcher positionalMatcher = STRING_TEMPLATE_POSITIONAL_PATTERN.matcher(result);
+                            
+                            int argIndex = 1; // Start from the second argument
+                            while (positionalMatcher.find() && argIndex < arguments.size()) {
+                                Object argValue = evaluate(arguments.get(argIndex++));
+                                positionalMatcher.appendReplacement(positionalOutput, 
+                                    argValue == null ? "null" : argValue.toString().replace("$", "\\$"));
+                            }
+                            positionalMatcher.appendTail(positionalOutput);
+                            result = positionalOutput.toString();
+                        }
+                        
+                        System.out.println(result);
                     }
-                    System.out.print(result);
                 }
             }
 
