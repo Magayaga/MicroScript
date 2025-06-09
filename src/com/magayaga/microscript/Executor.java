@@ -13,6 +13,7 @@ import java.util.regex.Pattern;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.Arrays;
+import java.io.IOException;
 
 public class Executor {
     /* Change from private to package-private (default) access */
@@ -188,12 +189,13 @@ public class Executor {
                                 // Evaluate the expression inside the braces
                                 Object result = evaluate(expr);
                                 // Replace with the string representation of the result
-                                placeholderMatcher.appendReplacement(output, result.toString().replace("$", "\\$"));
+                                placeholderMatcher.appendReplacement(output, 
+                                    Matcher.quoteReplacement(result.toString()));
                             }
-                            
                             catch (Exception e) {
                                 // If evaluation fails, leave the placeholder as is
-                                placeholderMatcher.appendReplacement(output, "{" + expr + "}");
+                                placeholderMatcher.appendReplacement(output, 
+                                    Matcher.quoteReplacement("{" + expr + "}"));
                             }
                         }
                         placeholderMatcher.appendTail(output);
@@ -209,14 +211,15 @@ public class Executor {
                             while (positionalMatcher.find() && argIndex < arguments.size()) {
                                 Object argValue = evaluate(arguments.get(argIndex++));
                                 positionalMatcher.appendReplacement(positionalOutput, 
-                                    argValue == null ? "null" : argValue.toString().replace("$", "\\$"));
+                                    Matcher.quoteReplacement(argValue == null ? "null" : argValue.toString()));
                             }
                             positionalMatcher.appendTail(positionalOutput);
                             result = positionalOutput.toString();
                         }
                         
-                        // Print without newline for console.writef
+                        // Print without newline for console.writef - this makes it work like bash command
                         System.out.print(result);
+                        System.out.flush(); // Ensure immediate output for bash-like behavior
                     }
                 }
                 else {
@@ -257,12 +260,13 @@ public class Executor {
                                 // Evaluate the expression inside the braces
                                 Object result = evaluate(expr);
                                 // Replace with the string representation of the result
-                                placeholderMatcher.appendReplacement(output, result.toString().replace("$", "\\$"));
+                                placeholderMatcher.appendReplacement(output, 
+                                    Matcher.quoteReplacement(result.toString()));
                             }
-                            
                             catch (Exception e) {
                                 // If evaluation fails, leave the placeholder as is
-                                placeholderMatcher.appendReplacement(output, "{" + expr + "}");
+                                placeholderMatcher.appendReplacement(output, 
+                                    Matcher.quoteReplacement("{" + expr + "}"));
                             }
                         }
                         placeholderMatcher.appendTail(output);
@@ -278,7 +282,7 @@ public class Executor {
                             while (positionalMatcher.find() && argIndex < arguments.size()) {
                                 Object argValue = evaluate(arguments.get(argIndex++));
                                 positionalMatcher.appendReplacement(positionalOutput, 
-                                    argValue == null ? "null" : argValue.toString().replace("$", "\\$"));
+                                    Matcher.quoteReplacement(argValue == null ? "null" : argValue.toString()));
                             }
                             positionalMatcher.appendTail(positionalOutput);
                             result = positionalOutput.toString();
@@ -293,8 +297,68 @@ public class Executor {
                 // Extract the command inside console.system()
                 Matcher matcher = CONSOLE_SYSTEM_PATTERN.matcher(expression);
                 if (matcher.matches()) {
-                    String command = matcher.group(1).trim();
-                    executeSystemCommand(command);
+                    String innerContent = matcher.group(1).trim();
+                    
+                    // Split the content by commas, but respect quotes and parentheses
+                    List<String> arguments = splitArguments(innerContent);
+                    
+                    if (arguments.isEmpty()) {
+                        throw new RuntimeException("console.system() requires at least one argument");
+                    }
+                    
+                    // Process first argument (the command)
+                    Object firstArg = evaluate(arguments.get(0));
+                    
+                    if (!(firstArg instanceof String)) {
+                        throw new RuntimeException("console.system() command must be a string");
+                    }
+                    
+                    String command = (String) firstArg;
+                    
+                    // Process escape sequences
+                    command = processEscapeSequences(command);
+                    
+                    // Process the command with expressions - {expression} style
+                    StringBuffer output = new StringBuffer();
+                    Matcher placeholderMatcher = STRING_TEMPLATE_EXPR_PATTERN.matcher(command);
+                    
+                    while (placeholderMatcher.find()) {
+                        String expr = placeholderMatcher.group(1).trim();
+                        
+                        try {
+                            // Evaluate the expression inside the braces
+                            Object result = evaluate(expr);
+                            // Replace with the string representation of the result
+                            placeholderMatcher.appendReplacement(output, 
+                                Matcher.quoteReplacement(result.toString()));
+                        }
+                        catch (Exception e) {
+                            // If evaluation fails, leave the placeholder as is
+                            placeholderMatcher.appendReplacement(output, 
+                                Matcher.quoteReplacement("{" + expr + "}"));
+                        }
+                    }
+                    placeholderMatcher.appendTail(output);
+                    
+                    // Process positional placeholders - {} style
+                    String result = output.toString();
+                    if (arguments.size() > 1) {
+                        // If there are additional arguments, handle positional placeholders
+                        StringBuffer positionalOutput = new StringBuffer();
+                        Matcher positionalMatcher = STRING_TEMPLATE_POSITIONAL_PATTERN.matcher(result);
+                        
+                        int argIndex = 1; // Start from the second argument
+                        while (positionalMatcher.find() && argIndex < arguments.size()) {
+                            Object argValue = evaluate(arguments.get(argIndex++));
+                            positionalMatcher.appendReplacement(positionalOutput, 
+                                Matcher.quoteReplacement(argValue == null ? "null" : argValue.toString()));
+                        }
+                        positionalMatcher.appendTail(positionalOutput);
+                        result = positionalOutput.toString();
+                    }
+                    
+                    // Execute the processed command
+                    executeSystemCommand(result);
                 }
             }
             
@@ -579,14 +643,75 @@ public class Executor {
     }
 
     private void executeSystemCommand(String command) throws Exception {
-        String[] cmdArray = command.split(" ");
-        Process process = new ProcessBuilder(cmdArray).start();
-        BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-        String line;
-        while ((line = reader.readLine()) != null) {
-            System.out.println(line);
+        try {
+            Process process;
+            String os = System.getProperty("os.name").toLowerCase();
+            
+            if (os.contains("win")) {
+                // Windows - use cmd.exe to handle complex commands with pipes, etc.
+                process = new ProcessBuilder("cmd", "/c", command).start();
+            } else {
+                // Unix-like systems (Linux, macOS, etc.) - use sh
+                process = new ProcessBuilder("sh", "-c", command).start();
+            }
+            
+            // Handle both stdout and stderr
+            BufferedReader stdoutReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            BufferedReader stderrReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+            
+            // Read stdout in a separate thread
+            Thread stdoutThread = new Thread(() -> {
+                try {
+                    String line;
+                    while ((line = stdoutReader.readLine()) != null) {
+                        System.out.println(line);
+                    }
+                    stdoutReader.close();
+                }
+                
+                catch (IOException e) {
+                    System.err.println("Error reading stdout: " + e.getMessage());
+                }
+            });
+            
+            // Read stderr in a separate thread
+            Thread stderrThread = new Thread(() -> {
+                try {
+                    String line;
+                    while ((line = stderrReader.readLine()) != null) {
+                        System.err.println(line);
+                    }
+                    stderrReader.close();
+                }
+                
+                catch (IOException e) {
+                    System.err.println("Error reading stderr: " + e.getMessage());
+                }
+            });
+            
+            stdoutThread.start();
+            stderrThread.start();
+            
+            // Wait for the process to complete
+            int exitCode = process.waitFor();
+            
+            // Wait for output threads to finish
+            stdoutThread.join();
+            stderrThread.join();
+            
+            // Optional: You might want to expose the exit code somehow
+            // For now, we'll just continue execution regardless of exit code
+            
         }
-        reader.close();
+        
+        catch (IOException e) {
+            throw new RuntimeException("Failed to execute system command: " + command, e);
+        }
+        
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("System command execution was interrupted: " + command, e);
+        }
     }
 
     public Object executeFunction(String functionName, String[] args) {
