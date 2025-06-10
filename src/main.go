@@ -107,7 +107,7 @@ const (
 )
 
 const (
-	version = "MicroScript v0.1.0"
+	version = "MicroScript v0.2.0" // Updated version for Go implementation
 	author  = "Cyril John Magayaga"
 )
 
@@ -119,6 +119,7 @@ func printUsage() {
 	fmt.Printf("%sCommands:%s\n", green, reset)
 	fmt.Printf("  %srun%s           Run a MicroScript source file\n", blue, reset)
 	fmt.Printf("  %sabout%s         Show about information\n", blue, reset)
+	fmt.Printf("\n%sSupported file extensions:%s .microscript, .mus, .micros\n", green, reset)
 }
 
 func printHelp() {
@@ -126,15 +127,27 @@ func printHelp() {
 	fmt.Println()
 	url := "https://github.com/magayaga/microscript"
 	fmt.Printf("For more information, visit: %s%s%s\n", orange, url, reset)
+	fmt.Printf("\n%sExamples:%s\n", green, reset)
+	fmt.Printf("  %smicroscript run hello.microscript%s\n", blue, reset)
+	fmt.Printf("  %smicroscript run program.mus%s\n", blue, reset)
+	fmt.Printf("  %smicroscript --version%s\n", blue, reset)
 }
 
 func printVersion() {
 	fmt.Printf("%s%s%s\n", blue, version, reset)
+	fmt.Printf("Go implementation - High performance MicroScript interpreter\n")
 }
 
 func printAbout() {
 	fmt.Printf("%sMicroScript - The programming language%s\n", blue, reset)
+	fmt.Printf("High-performance Go implementation\n")
 	fmt.Printf("Copyright (c) 2024-2025 %s%s%s\n", green, author, reset)
+	fmt.Printf("\n%sFeatures:%s\n", green, reset)
+	fmt.Printf("  • Fast native compilation\n")
+	fmt.Printf("  • Macro preprocessing with #define/#undef\n")
+	fmt.Printf("  • C-style and MicroScript function syntax\n")
+	fmt.Printf("  • Arrow functions and lambda expressions\n")
+	fmt.Printf("  • Comprehensive error handling\n")
 }
 
 func handleCli(args []string) {
@@ -149,25 +162,22 @@ func handleCli(args []string) {
 	case "about":
 		printAbout()
 	case "run":
-		fmt.Printf("%sRunning MicroScript file...%s\n", blue, reset)
-		// Note: In actual implementation, this would delegate back to main logic
+		if len(args) < 2 {
+			fmt.Printf("%sError:%s Missing file path for run command\n", "\033[31;1m", reset)
+			printUsage()
+			return
+		}
+
+		filePath := args[1]
+		if !hasValidExtension(filePath) {
+			printExtensionError(filePath)
+			return
+		}
+
+		fmt.Printf("%sRunning MicroScript file:%s %s\n", blue, reset, filePath)
+		executeScript(filePath)
 	default:
-		fmt.Printf("Unknown command: %s\n", args[0])
+		fmt.Printf("%sError:%s Unknown command: %s\n", "\033[31;1m", reset, args[0])
 		printUsage()
 	}
-}
-
-// Placeholder for Parser - would be implemented in parser.go
-type Parser struct {
-	lines []string
-}
-
-func NewParser(lines []string) *Parser {
-	return &Parser{lines: lines}
-}
-
-func (p *Parser) Parse() error {
-	// Placeholder implementation
-	// In real implementation, this would parse and execute the MicroScript
-	return nil
 }
