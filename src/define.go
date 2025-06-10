@@ -1,9 +1,8 @@
-// define.go
 /**
  * MicroScript — The programming language
  * Copyright (c) 2025 Cyril John Magayaga
  *
- * It was originally written in Java programming language.
+ * It was originally written in Go programming language
  */
 package main
 
