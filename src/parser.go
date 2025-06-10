@@ -463,23 +463,6 @@ func (p *Parser) importModule(moduleName string) error {
 	return nil
 }
 
-// Executor handles code execution (placeholder)
-type Executor struct {
-	environment *Environment
-}
-
-// NewExecutor creates a new executor
-func NewExecutor(env *Environment) *Executor {
-	return &Executor{environment: env}
-}
-
-// Execute executes a statement
-func (e *Executor) Execute(statement string) error {
-	// Placeholder for statement execution
-	fmt.Printf("Executing: %s\n", statement)
-	return nil
-}
-
 // ExecuteFunction executes a function call
 func (e *Executor) ExecuteFunction(name string, args []string) error {
 	// Placeholder for function execution
