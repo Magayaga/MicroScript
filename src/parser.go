@@ -13,20 +13,6 @@ import (
 	"strings"
 )
 
-// Parameter represents a function parameter
-type Parameter struct {
-	Name string
-	Type string
-}
-
-// Function represents a MicroScript function
-type Function struct {
-	Name       string
-	Parameters []Parameter
-	ReturnType string
-	Body       []string
-}
-
 // ArrowFunction represents an arrow function
 type ArrowFunction struct {
 	Name       string
