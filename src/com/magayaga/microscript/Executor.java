@@ -22,6 +22,7 @@ public class Executor {
     // Pre-compiled regex patterns
     private static final Pattern CONSOLE_WRITE_PATTERN = Pattern.compile("console\\.write\\((.*)\\);");
     private static final Pattern CONSOLE_WRITEF_PATTERN = Pattern.compile("console\\.writef\\((.*)\\);");
+    private static final Pattern CONSOLE_PANIC_PATTERN = Pattern.compile("console\\.panic\\((.*)\\);");
     private static final Pattern CONSOLE_SYSTEM_PATTERN = Pattern.compile("console\\.system\\((.*)\\);");
     private static final Pattern FUNCTION_CALL_PATTERN = Pattern.compile("(\\w+)\\((.*)\\)");
     private static final Pattern STRING_TEMPLATE_EXPR_PATTERN = Pattern.compile("\\{([^{}]+)\\}");
@@ -290,6 +291,80 @@ public class Executor {
                         
                         System.out.println(result);
                     }
+                }
+            }
+
+                        else if (expression.startsWith("console.panic")) {
+                // Handle console.panic() - signals a severe runtime error
+                Matcher matcher = CONSOLE_PANIC_PATTERN.matcher(expression);
+                if (matcher.matches()) {
+                    String innerContent = matcher.group(1).trim();
+                    
+                    // Split the content by commas, but respect quotes and parentheses
+                    List<String> arguments = splitArguments(innerContent);
+                    
+                    if (arguments.isEmpty()) {
+                        throw new PanicException("panic: no message provided");
+                    }
+                    
+                    // Process first argument (the panic message)
+                    Object firstArg = evaluate(arguments.get(0));
+                    
+                    String panicMessage;
+                    if (!(firstArg instanceof String)) {
+                        panicMessage = firstArg == null ? "null" : firstArg.toString();
+                    } else {
+                        String template = (String) firstArg;
+                        
+                        // Process escape sequences first
+                        template = processEscapeSequences(template);
+                        
+                        // Process the template with expressions - {expression} style
+                        StringBuffer output = new StringBuffer();
+                        Matcher placeholderMatcher = STRING_TEMPLATE_EXPR_PATTERN.matcher(template);
+                        
+                        while (placeholderMatcher.find()) {
+                            String expr = placeholderMatcher.group(1).trim();
+                            
+                            try {
+                                // Evaluate the expression inside the braces
+                                Object result = evaluate(expr);
+                                // Replace with the string representation of the result
+                                placeholderMatcher.appendReplacement(output, 
+                                    Matcher.quoteReplacement(result.toString()));
+                            }
+                            catch (Exception e) {
+                                // If evaluation fails, leave the placeholder as is
+                                placeholderMatcher.appendReplacement(output, 
+                                    Matcher.quoteReplacement("{" + expr + "}"));
+                            }
+                        }
+                        placeholderMatcher.appendTail(output);
+                        
+                        // Process positional placeholders - {} style
+                        panicMessage = output.toString();
+                        if (arguments.size() > 1) {
+                            // If there are additional arguments, handle positional placeholders
+                            StringBuffer positionalOutput = new StringBuffer();
+                            Matcher positionalMatcher = STRING_TEMPLATE_POSITIONAL_PATTERN.matcher(panicMessage);
+                            
+                            int argIndex = 1; // Start from the second argument
+                            while (positionalMatcher.find() && argIndex < arguments.size()) {
+                                Object argValue = evaluate(arguments.get(argIndex++));
+                                positionalMatcher.appendReplacement(positionalOutput, 
+                                    Matcher.quoteReplacement(argValue == null ? "null" : argValue.toString()));
+                            }
+                            positionalMatcher.appendTail(positionalOutput);
+                            panicMessage = positionalOutput.toString();
+                        }
+                    }
+                    
+                    // Print panic message to stderr and throw PanicException
+                    System.err.println("panic: " + panicMessage);
+                    System.err.flush();
+                    
+                    // Throw a special exception that will terminate the program
+                    throw new PanicException("panic: " + panicMessage);
                 }
             }
 
