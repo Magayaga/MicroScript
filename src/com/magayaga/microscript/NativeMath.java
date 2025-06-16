@@ -17,6 +17,13 @@ public class NativeMath {
     public static native double TAU();
     public static native double PHI();
     public static native double SILVERRATIO();
+    public static native double EULER();
+    public static native double CATALAN();
+    public static native double APERY();
+    public static native double FEIGENBAUMDELTA();
+    public static native double FEIGENBAUMALPHA();
+    public static native double PLASTIC();
+    public static native double TWINPRIME();
     public static native double square(double value);
     public static native double cube(double value);
     public static native double abs(double value);

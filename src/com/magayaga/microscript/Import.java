@@ -38,11 +38,19 @@ public class Import {
     public static class MathModule implements Module {
         @Override
         public void register(Environment env) {
-            env.setVariable("math::PI", NativeMath.PI());
-            env.setVariable("math::E", NativeMath.E());
-            env.setVariable("math::TAU", NativeMath.TAU());
-            env.setVariable("math::PHI", NativeMath.PHI());
-            env.setVariable("math::SILVERRATIO", NativeMath.SILVERRATIO());
+            env.setVariable("math::numbers::pi", NativeMath.PI());
+            env.setVariable("math::numbers::e", NativeMath.E());
+            env.setVariable("math::numbers::eulerNumber", NativeMath.E());
+            env.setVariable("math::numbers::tau", NativeMath.TAU());
+            env.setVariable("math::numbers::phi", NativeMath.PHI());
+            env.setVariable("math::numbers::silverRatio", NativeMath.SILVERRATIO());
+            env.setVariable("math::numbers::eulerConstant", NativeMath.EULER());
+            env.setVariable("math::numbers::catalan", NativeMath.CATALAN());
+            env.setVariable("math::numbers::apery", NativeMath.APERY());
+            env.setVariable("math::numbers::feigenbaumDelta", NativeMath.FEIGENBAUMDELTA());
+            env.setVariable("math::numbers::feigenbaumAlpha", NativeMath.FEIGENBAUMALPHA());
+            env.setVariable("math::numbers::plastic", NativeMath.PLASTIC());
+            env.setVariable("math::numbers::twinPrime", NativeMath.TWINPRIME());
             env.setVariable("math::sqrt", (Import.FunctionInterface) (args) -> NativeMath.sqrt(((Number) args[0]).doubleValue()));
             env.setVariable("math::square", (Import.FunctionInterface) (args) -> NativeMath.square(((Number) args[0]).doubleValue()));
             env.setVariable("math::cbrt", (Import.FunctionInterface) (args) -> NativeMath.cbrt(((Number) args[0]).doubleValue()));

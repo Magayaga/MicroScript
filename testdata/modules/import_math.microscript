@@ -3,11 +3,18 @@
 import math
 
 function main() {
-    console.write(math::PI);
-    console.write(math::E);
-    console.write(math::TAU);
-    console.write(math::PHI);
-    console.write(math::SILVERRATIO);
+    console.write(math::numbers::pi);
+    console.write(math::numbers::e);
+    console.write(math::numbers::tau);
+    console.write(math::numbers::phi);
+    console.write(math::numbers::silverRatio);
+    console.write(math::numbers::eulerConstant);
+    console.write(math::numbers::catalan);
+    console.write(math::numbers::apery);
+    console.write(math::numbers::feigenbaumDelta);
+    console.write(math::numbers::feigenbaumAlpha);
+    console.write(math::numbers::plastic);
+    console.write(math::numbers::twinPrime);
     console.write(math::sqrt(4));
     console.write(math::square(4));
     console.write(math::cube(4));
