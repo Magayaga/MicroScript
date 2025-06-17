@@ -38,6 +38,41 @@ JNIEXPORT jdouble JNICALL Java_com_magayaga_microscript_NativeMath_SILVERRATIO(J
     return 2.41421356237309504880;
 }
 
+// Euler's constant
+JNIEXPORT jdouble JNICALL Java_com_magayaga_microscript_NativeMath_EULER(JNIEnv *env, jclass cls) {
+    return 0.57721566490153286060;
+}
+
+// Catalan's constant
+JNIEXPORT jdouble JNICALL Java_com_magayaga_microscript_NativeMath_CATALAN(JNIEnv *env, jclass cls) {
+    return 0.91596559417721901505;
+}
+
+// Apéry's constant
+JNIEXPORT jdouble JNICALL Java_com_magayaga_microscript_NativeMath_APERY(JNIEnv *env, jclass cls) {
+    return 1.20205690315959428540;
+}
+
+// Feigenbaum constant delta
+JNIEXPORT jdouble JNICALL Java_com_magayaga_microscript_NativeMath_FEIGENBAUMDELTA(JNIEnv *env, jclass cls) {
+    return 4.66920160910299067185;
+}
+
+// Feigenbaum constant alpha
+JNIEXPORT jdouble JNICALL Java_com_magayaga_microscript_NativeMath_FEIGENBAUMALPHA(JNIEnv *env, jclass cls) {
+    return 2.50290787509589282228;
+}
+
+// Plastic constant
+JNIEXPORT jdouble JNICALL Java_com_magayaga_microscript_NativeMath_PLASTIC(JNIEnv *env, jclass cls) {
+    return 1.32471795724474602596;
+}
+
+// Twin prime constant
+JNIEXPORT jdouble JNICALL Java_com_magayaga_microscript_NativeMath_TWINPRIME(JNIEnv *env, jclass cls) {
+    return 0.66016181584686957392;
+}
+
 // Square
 JNIEXPORT jdouble JNICALL Java_com_magayaga_microscript_NativeMath_square
   (JNIEnv *env, jclass cls, jdouble value) {

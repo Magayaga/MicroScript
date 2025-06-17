@@ -10,6 +10,8 @@ function main() {
     bool conditionF = not false
     bool conditionG = !true
     bool conditionH = !false
+    bool conditionI = !conditionG
+    bool conditionJ = !conditionH
     console.write(conditionA);
     console.write(conditionB);
     console.write(conditionC);

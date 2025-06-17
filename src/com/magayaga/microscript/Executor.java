@@ -13,7 +13,6 @@ import java.util.regex.Pattern;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.Arrays;
-import java.io.IOException;
 
 public class Executor {
     /* Change from private to package-private (default) access */
@@ -21,7 +20,6 @@ public class Executor {
 
     // Pre-compiled regex patterns
     private static final Pattern CONSOLE_WRITE_PATTERN = Pattern.compile("console\\.write\\((.*)\\);");
-    private static final Pattern CONSOLE_WRITEF_PATTERN = Pattern.compile("console\\.writef\\((.*)\\);");
     private static final Pattern CONSOLE_SYSTEM_PATTERN = Pattern.compile("console\\.system\\((.*)\\);");
     private static final Pattern FUNCTION_CALL_PATTERN = Pattern.compile("(\\w+)\\((.*)\\)");
     private static final Pattern STRING_TEMPLATE_EXPR_PATTERN = Pattern.compile("\\{([^{}]+)\\}");
@@ -29,6 +27,7 @@ public class Executor {
     private static final Pattern SWITCH_DETECT_PATTERN = Pattern.compile("^\\s*switch\\s*\\(.*\\)\\s*\\{?\\s*$");
     private static final Pattern DEFINE_FUNC_MACRO_PATTERN =
         Pattern.compile("#define\\s+([A-Z_][A-Z0-9_]*)\\s*\\(([^)]*)\\)\\s+(.+)");
+    private static final Pattern CONSOLE_WRITEF_PATTERN = Pattern.compile("console\\.writef\\((.*)\\);");
     
     // Patterns for increment/decrement operations
     private static final Pattern PRE_INCREMENT_PATTERN = Pattern.compile("\\+\\+([a-zA-Z_][a-zA-Z0-9_]*)\\s*;?");
@@ -52,69 +51,19 @@ public class Executor {
         return result;
     }
 
-    /**
-     * Process escape sequences in a string
-     * @param input The input string that may contain escape sequences
-     * @return The processed string with escape sequences converted
-     */
-    private String processEscapeSequences(String input) {
-        if (input == null) {
-            return null;
-        }
-        
-        StringBuilder result = new StringBuilder();
-        for (int i = 0; i < input.length(); i++) {
-            char c = input.charAt(i);
-            
-            if (c == '\\' && i + 1 < input.length()) {
-                char next = input.charAt(i + 1);
-                switch (next) {
-                    case 'n':
-                        result.append('\n');
-                        i++; // Skip the next character
-                        break;
-                    case 't':
-                        result.append('\t');
-                        i++; // Skip the next character
-                        break;
-                    case 'r':
-                        result.append('\r');
-                        i++; // Skip the next character
-                        break;
-                    case '\\':
-                        result.append('\\');
-                        i++; // Skip the next character
-                        break;
-                    case '"':
-                        result.append('"');
-                        i++; // Skip the next character
-                        break;
-                    case '\'':
-                        result.append('\'');
-                        i++; // Skip the next character
-                        break;
-                    case '0':
-                        result.append('\0');
-                        i++; // Skip the next character
-                        break;
-                    default:
-                        // If it's not a recognized escape sequence, keep the backslash
-                        result.append(c);
-                        break;
-                }
-            } else {
-                result.append(c);
-            }
-        }
-        
-        return result.toString();
-    }
-
     public void execute(String expression) {
         try {
             // Skip comments
             if (expression.startsWith("//")) {
                 return;
+            }
+
+            // Handle break and continue statements
+            if (expression.trim().equals("break;") || expression.trim().equals("break")) {
+                throw new Statements.BreakException();
+            }
+            if (expression.trim().equals("continue;") || expression.trim().equals("continue")) {
+                throw new Statements.ContinueException();
             }
 
             // Handle increment/decrement operations first
@@ -148,154 +97,8 @@ public class Executor {
             }
 
             if (expression.startsWith("console.write")) {
-                // Check if it's console.writef first (more specific match)
-                if (expression.startsWith("console.writef")) {
-                    // Extract the content inside console.writef()
-                    Matcher matcher = CONSOLE_WRITEF_PATTERN.matcher(expression);
-                    if (matcher.matches()) {
-                        String innerContent = matcher.group(1).trim();
-                        
-                        // Split the content by commas, but respect quotes and parentheses
-                        List<String> arguments = splitArguments(innerContent);
-                        
-                        if (arguments.isEmpty()) {
-                            throw new RuntimeException("console.writef() requires at least one argument");
-                        }
-                        
-                        // Process first argument
-                        Object firstArg = evaluate(arguments.get(0));
-                        
-                        // Handle case where first argument is not a string template
-                        if (!(firstArg instanceof String)) {
-                            // For non-string values, just print them directly without newline
-                            System.out.print(firstArg);
-                            return;
-                        }
-                        
-                        // Process as string template if it's a string
-                        String template = (String) firstArg;
-                        
-                        // Process escape sequences first
-                        template = processEscapeSequences(template);
-                        
-                        // Process the template with expressions - {expression} style
-                        StringBuffer output = new StringBuffer();
-                        Matcher placeholderMatcher = STRING_TEMPLATE_EXPR_PATTERN.matcher(template);
-                        
-                        while (placeholderMatcher.find()) {
-                            String expr = placeholderMatcher.group(1).trim();
-                            
-                            try {
-                                // Evaluate the expression inside the braces
-                                Object result = evaluate(expr);
-                                // Replace with the string representation of the result
-                                placeholderMatcher.appendReplacement(output, 
-                                    Matcher.quoteReplacement(result.toString()));
-                            }
-                            catch (Exception e) {
-                                // If evaluation fails, leave the placeholder as is
-                                placeholderMatcher.appendReplacement(output, 
-                                    Matcher.quoteReplacement("{" + expr + "}"));
-                            }
-                        }
-                        placeholderMatcher.appendTail(output);
-                        
-                        // Process positional placeholders - {} style
-                        String result = output.toString();
-                        if (arguments.size() > 1) {
-                            // If there are additional arguments, handle positional placeholders
-                            StringBuffer positionalOutput = new StringBuffer();
-                            Matcher positionalMatcher = STRING_TEMPLATE_POSITIONAL_PATTERN.matcher(result);
-                            
-                            int argIndex = 1; // Start from the second argument
-                            while (positionalMatcher.find() && argIndex < arguments.size()) {
-                                Object argValue = evaluate(arguments.get(argIndex++));
-                                positionalMatcher.appendReplacement(positionalOutput, 
-                                    Matcher.quoteReplacement(argValue == null ? "null" : argValue.toString()));
-                            }
-                            positionalMatcher.appendTail(positionalOutput);
-                            result = positionalOutput.toString();
-                        }
-                        
-                        // Print without newline for console.writef - this makes it work like bash command
-                        System.out.print(result);
-                        System.out.flush(); // Ensure immediate output for bash-like behavior
-                    }
-                }
-                else {
-                    // Handle regular console.write (with newline)
-                    // Extract the content inside console.write()
-                    Matcher matcher = CONSOLE_WRITE_PATTERN.matcher(expression);
-                    if (matcher.matches()) {
-                        String innerContent = matcher.group(1).trim();
-                        
-                        // Split the content by commas, but respect quotes and parentheses
-                        List<String> arguments = splitArguments(innerContent);
-                        
-                        if (arguments.isEmpty()) {
-                            throw new RuntimeException("console.write() requires at least one argument");
-                        }
-                        
-                        // Process first argument
-                        Object firstArg = evaluate(arguments.get(0));
-                        
-                        // Handle case where first argument is not a string template
-                        if (!(firstArg instanceof String)) {
-                            // For non-string values, just print them directly
-                            System.out.println(firstArg);
-                            return;
-                        }
-                        
-                        // Process as string template if it's a string
-                        String template = (String) firstArg;
-                        
-                        // Process the template with expressions - {expression} style
-                        StringBuffer output = new StringBuffer();
-                        Matcher placeholderMatcher = STRING_TEMPLATE_EXPR_PATTERN.matcher(template);
-                        
-                        while (placeholderMatcher.find()) {
-                            String expr = placeholderMatcher.group(1).trim();
-                            
-                            try {
-                                // Evaluate the expression inside the braces
-                                Object result = evaluate(expr);
-                                // Replace with the string representation of the result
-                                placeholderMatcher.appendReplacement(output, 
-                                    Matcher.quoteReplacement(result.toString()));
-                            }
-                            catch (Exception e) {
-                                // If evaluation fails, leave the placeholder as is
-                                placeholderMatcher.appendReplacement(output, 
-                                    Matcher.quoteReplacement("{" + expr + "}"));
-                            }
-                        }
-                        placeholderMatcher.appendTail(output);
-                        
-                        // Process positional placeholders - {} style
-                        String result = output.toString();
-                        if (arguments.size() > 1) {
-                            // If there are additional arguments, handle positional placeholders
-                            StringBuffer positionalOutput = new StringBuffer();
-                            Matcher positionalMatcher = STRING_TEMPLATE_POSITIONAL_PATTERN.matcher(result);
-                            
-                            int argIndex = 1; // Start from the second argument
-                            while (positionalMatcher.find() && argIndex < arguments.size()) {
-                                Object argValue = evaluate(arguments.get(argIndex++));
-                                positionalMatcher.appendReplacement(positionalOutput, 
-                                    Matcher.quoteReplacement(argValue == null ? "null" : argValue.toString()));
-                            }
-                            positionalMatcher.appendTail(positionalOutput);
-                            result = positionalOutput.toString();
-                        }
-                        
-                        System.out.println(result);
-                    }
-                }
-            }
-
-            else if (expression.startsWith("console.system")) {
-                // Extract the command inside console.system()
-                Matcher matcher = CONSOLE_SYSTEM_PATTERN.matcher(expression);
+                // Extract the content inside console.write()
+                Matcher matcher = CONSOLE_WRITE_PATTERN.matcher(expression);
                 if (matcher.matches()) {
                     String innerContent = matcher.group(1).trim();
                     
@@ -303,24 +106,25 @@ public class Executor {
                     List<String> arguments = splitArguments(innerContent);
                     
                     if (arguments.isEmpty()) {
-                        throw new RuntimeException("console.system() requires at least one argument");
+                        throw new RuntimeException("console.write() requires at least one argument");
                     }
                     
-                    // Process first argument (the command)
+                    // Process first argument
                     Object firstArg = evaluate(arguments.get(0));
                     
+                    // Handle case where first argument is not a string template
                     if (!(firstArg instanceof String)) {
-                        throw new RuntimeException("console.system() command must be a string");
+                        // For non-string values, just print them directly
+                        System.out.println(firstArg);
+                        return;
                     }
                     
-                    String command = (String) firstArg;
+                    // Process as string template if it's a string
+                    String template = (String) firstArg;
                     
-                    // Process escape sequences
-                    command = processEscapeSequences(command);
-                    
-                    // Process the command with expressions - {expression} style
+                    // Process the template with expressions - {expression} style
                     StringBuffer output = new StringBuffer();
-                    Matcher placeholderMatcher = STRING_TEMPLATE_EXPR_PATTERN.matcher(command);
+                    Matcher placeholderMatcher = STRING_TEMPLATE_EXPR_PATTERN.matcher(template);
                     
                     while (placeholderMatcher.find()) {
                         String expr = placeholderMatcher.group(1).trim();
@@ -329,13 +133,12 @@ public class Executor {
                             // Evaluate the expression inside the braces
                             Object result = evaluate(expr);
                             // Replace with the string representation of the result
-                            placeholderMatcher.appendReplacement(output, 
-                                Matcher.quoteReplacement(result.toString()));
+                            placeholderMatcher.appendReplacement(output, result.toString().replace("$", "\\$"));
                         }
+                        
                         catch (Exception e) {
                             // If evaluation fails, leave the placeholder as is
-                            placeholderMatcher.appendReplacement(output, 
-                                Matcher.quoteReplacement("{" + expr + "}"));
+                            placeholderMatcher.appendReplacement(output, "{" + expr + "}");
                         }
                     }
                     placeholderMatcher.appendTail(output);
@@ -351,14 +154,89 @@ public class Executor {
                         while (positionalMatcher.find() && argIndex < arguments.size()) {
                             Object argValue = evaluate(arguments.get(argIndex++));
                             positionalMatcher.appendReplacement(positionalOutput, 
-                                Matcher.quoteReplacement(argValue == null ? "null" : argValue.toString()));
+                                argValue == null ? "null" : argValue.toString().replace("$", "\\$"));
                         }
                         positionalMatcher.appendTail(positionalOutput);
                         result = positionalOutput.toString();
                     }
                     
-                    // Execute the processed command
-                    executeSystemCommand(result);
+                    System.out.println(result);
+                }
+            }
+            
+            else if (expression.startsWith("console.writef")) {
+                // Extract the content inside console.writef()
+                Matcher matcher = CONSOLE_WRITEF_PATTERN.matcher(expression);
+                if (matcher.matches()) {
+                    String innerContent = matcher.group(1).trim();
+                    
+                    // Split the content by commas, but respect quotes and parentheses
+                    List<String> arguments = splitArguments(innerContent);
+                    
+                    if (arguments.isEmpty()) {
+                        throw new RuntimeException("console.writef() requires at least one argument");
+                    }
+                    
+                    // Process first argument
+                    Object firstArg = evaluate(arguments.get(0));
+                    
+                    // Handle case where first argument is not a string template
+                    if (!(firstArg instanceof String)) {
+                        // For non-string values, just print them directly
+                        System.out.print(firstArg);
+                        return;
+                    }
+                    
+                    // Process as string template if it's a string
+                    String template = (String) firstArg;
+                    
+                    // Process the template with expressions - {expression} style
+                    StringBuffer output = new StringBuffer();
+                    Matcher placeholderMatcher = STRING_TEMPLATE_EXPR_PATTERN.matcher(template);
+                    
+                    while (placeholderMatcher.find()) {
+                        String expr = placeholderMatcher.group(1).trim();
+                        
+                        try {
+                            // Evaluate the expression inside the braces
+                            Object result = evaluate(expr);
+                            // Replace with the string representation of the result
+                            placeholderMatcher.appendReplacement(output, result.toString().replace("$", "\\$"));
+                        }
+                        
+                        catch (Exception e) {
+                            // If evaluation fails, leave the placeholder as is
+                            placeholderMatcher.appendReplacement(output, "{" + expr + "}");
+                        }
+                    }
+                    placeholderMatcher.appendTail(output);
+                    
+                    // Process positional placeholders - {} style
+                    String result = output.toString();
+                    if (arguments.size() > 1) {
+                        // If there are additional arguments, handle positional placeholders
+                        StringBuffer positionalOutput = new StringBuffer();
+                        Matcher positionalMatcher = STRING_TEMPLATE_POSITIONAL_PATTERN.matcher(result);
+                        
+                        int argIndex = 1; // Start from the second argument
+                        while (positionalMatcher.find() && argIndex < arguments.size()) {
+                            Object argValue = evaluate(arguments.get(argIndex++));
+                            positionalMatcher.appendReplacement(positionalOutput, 
+                                argValue == null ? "null" : argValue.toString().replace("$", "\\$"));
+                        }
+                        positionalMatcher.appendTail(positionalOutput);
+                        result = positionalOutput.toString();
+                    }
+                    System.out.print(result);
+                }
+            }
+
+            else if (expression.startsWith("console.system")) {
+                // Extract the command inside console.system()
+                Matcher matcher = CONSOLE_SYSTEM_PATTERN.matcher(expression);
+                if (matcher.matches()) {
+                    String command = matcher.group(1).trim();
+                    executeSystemCommand(command);
                 }
             }
             
@@ -643,75 +521,14 @@ public class Executor {
     }
 
     private void executeSystemCommand(String command) throws Exception {
-        try {
-            Process process;
-            String os = System.getProperty("os.name").toLowerCase();
-            
-            if (os.contains("win")) {
-                // Windows - use cmd.exe to handle complex commands with pipes, etc.
-                process = new ProcessBuilder("cmd", "/c", command).start();
-            } else {
-                // Unix-like systems (Linux, macOS, etc.) - use sh
-                process = new ProcessBuilder("sh", "-c", command).start();
-            }
-            
-            // Handle both stdout and stderr
-            BufferedReader stdoutReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            BufferedReader stderrReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-            
-            // Read stdout in a separate thread
-            Thread stdoutThread = new Thread(() -> {
-                try {
-                    String line;
-                    while ((line = stdoutReader.readLine()) != null) {
-                        System.out.println(line);
-                    }
-                    stdoutReader.close();
-                }
-                
-                catch (IOException e) {
-                    System.err.println("Error reading stdout: " + e.getMessage());
-                }
-            });
-            
-            // Read stderr in a separate thread
-            Thread stderrThread = new Thread(() -> {
-                try {
-                    String line;
-                    while ((line = stderrReader.readLine()) != null) {
-                        System.err.println(line);
-                    }
-                    stderrReader.close();
-                }
-                
-                catch (IOException e) {
-                    System.err.println("Error reading stderr: " + e.getMessage());
-                }
-            });
-            
-            stdoutThread.start();
-            stderrThread.start();
-            
-            // Wait for the process to complete
-            int exitCode = process.waitFor();
-            
-            // Wait for output threads to finish
-            stdoutThread.join();
-            stderrThread.join();
-            
-            // Optional: You might want to expose the exit code somehow
-            // For now, we'll just continue execution regardless of exit code
-            
+        String[] cmdArray = command.split(" ");
+        Process process = new ProcessBuilder(cmdArray).start();
+        BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+        String line;
+        while ((line = reader.readLine()) != null) {
+            System.out.println(line);
         }
-        
-        catch (IOException e) {
-            throw new RuntimeException("Failed to execute system command: " + command, e);
-        }
-        
-        catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("System command execution was interrupted: " + command, e);
-        }
+        reader.close();
     }
 
     public Object executeFunction(String functionName, String[] args) {
@@ -767,114 +584,108 @@ public class Executor {
             List<String> body = function.getBody();
             // Process function body, handling control flow structures like if/else
             for (int i = 0; i < body.size(); i++) {
-                String line = body.get(i).trim(); // Trim line once here
-                // Skip empty lines and comments
-                if (line.isEmpty() || line.startsWith("//")) {
-                    continue;
-                }
-                
-                // Handle if statements
-                if (line.startsWith("if")) {
-                    // Use the Statements class to process the conditional
-                    int newIndex = Statements.processConditionalStatement(body, i, new Executor(localEnv));
-                    
-                    // Important: Make sure we're not stuck in an infinite loop
-                    if (newIndex <= i) {
-                        throw new RuntimeException("Error processing if statement at line: " + line);
+                String line = body.get(i).trim();
+                try {
+                    // Skip empty lines and comments
+                    if (line.isEmpty() || line.startsWith("//")) {
+                        continue;
                     }
-                    
-                    i = newIndex - 1; // -1 because the loop will increment i
-                    continue;
-                }
-                
-                // Handle for loops
-                if (line.startsWith("for")) {
-                    // Process the for loop
-                    int newIndex = ForLoop.processForLoop(body, i, new Executor(localEnv));
-                    
-                    // Ensure we're making progress
-                    if (newIndex <= i) {
-                        throw new RuntimeException("Error processing for loop at line: " + line);
-                    }
-                    
-                    i = newIndex - 1; // -1 because the loop will increment i
-                    continue;
-                }
-                
-                // Handle while loops
-                if (line.startsWith("while")) {
-                    // Process the while loop
-                    int newIndex = Loop.processLoop(body, i, new Executor(localEnv));
-                    
-                    // Ensure we're making progress
-                    if (newIndex <= i) {
-                        throw new RuntimeException("Error processing while loop at line: " + line);
-                    }
-                    
-                    i = newIndex - 1; // -1 because the loop will increment i
-                    continue;
-                }
 
-                // Handle switch statements
-                if (line.startsWith("switch")) {
-                    // Process the switch statement
-                    int newIndex = Switch.processSwitchStatement(body, i, new Executor(localEnv));
-                    
-                    // Ensure we're making progress
-                    if (newIndex <= i) {
-                        throw new RuntimeException("Error processing switch statement at line: " + line);
+                    // Handle break/continue - they should never bubble up to function level
+                    if (line.equals("break;") || line.equals("break") ||
+                        line.equals("continue;") || line.equals("continue")) {
+                        throw new RuntimeException("Break/continue statements are only allowed inside loops");
                     }
                     
-                    i = newIndex - 1; // -1 because the loop will increment i
-                    continue;
-                }
-                
-                // Handle return statements
-                if (line.startsWith("return")) {
-                    String returnExpression = line.substring(line.indexOf("return") + 6).trim().replace(";", "");
-                    // Evaluate complex expressions in return statements
-                    returnValue = new Executor(localEnv).evaluate(returnExpression);
-                    // Ensure the return value matches the expected return type
-                    String expectedReturnType = function.getReturnType();
-                    switch (expectedReturnType) {
-                        case "String":
-                            if (!(returnValue instanceof String)) {
-                                throw new RuntimeException("Type error: Return value " + returnValue + " is not a String.");
-                            }
-                            break;
-                        case "Int32":
-                        case "Int64":
-                            if (!(returnValue instanceof Integer)) {
-                                throw new RuntimeException("Type error: Return value " + returnValue + " is not an Integer.");
-                            }
-                            break;
-                        case "Float32":
-                            if (!(returnValue instanceof Float)) {
-                                throw new RuntimeException("Type error: Return value " + returnValue + " is not a Float32.");
-                            }
-                            break;
-                        case "Float64":
-                            if (!(returnValue instanceof Double)) {
-                                // Convert Integer to Double if necessary
-                                if (returnValue instanceof Integer) {
-                                    returnValue = ((Integer) returnValue).doubleValue();
-                                } else {
-                                    throw new RuntimeException("Type error: Return value " + returnValue + " is not a Float64.");
+                    // Handle if statements
+                    if (line.startsWith("if")) {
+                        try {
+                            // Use the Statements class to process the conditional
+                            int newIndex = Statements.processConditionalStatement(body, i, new Executor(localEnv));
+                            i = newIndex - 1; // -1 because the loop will increment i
+                            continue;
+                        } catch (Statements.BreakException | Statements.ContinueException e) {
+                            throw new RuntimeException("Break/continue statements are only allowed inside loops");
+                        }
+                    }
+                    
+                    // Handle for loops
+                    if (line.startsWith("for")) {
+                        int newIndex = ForLoop.processForLoop(body, i, new Executor(localEnv));
+                        i = newIndex - 1;
+                        continue;
+                    }
+                    
+                    // Handle while loops
+                    if (line.startsWith("while")) {
+                        int newIndex = Loop.processLoop(body, i, new Executor(localEnv));
+                        i = newIndex - 1;
+                        continue;
+                    }
+
+                    // Handle switch statements
+                    if (line.startsWith("switch")) {
+                        // Process the switch statement
+                        int newIndex = Switch.processSwitchStatement(body, i, new Executor(localEnv));
+                        
+                        // Ensure we're making progress
+                        if (newIndex <= i) {
+                            throw new RuntimeException("Error processing switch statement at line: " + line);
+                        }
+                        
+                        i = newIndex - 1; // -1 because the loop will increment i
+                        continue;
+                    }
+                    
+                    // Handle return statements
+                    if (line.startsWith("return")) {
+                        String returnExpression = line.substring(line.indexOf("return") + 6).trim().replace(";", "");
+                        // Evaluate complex expressions in return statements
+                        returnValue = new Executor(localEnv).evaluate(returnExpression);
+                        // Ensure the return value matches the expected return type
+                        String expectedReturnType = function.getReturnType();
+                        switch (expectedReturnType) {
+                            case "String":
+                                if (!(returnValue instanceof String)) {
+                                    throw new RuntimeException("Type error: Return value " + returnValue + " is not a String.");
                                 }
-                            }
-                            break;
-                        case "Char":
-                            if (!(returnValue instanceof Character)) {
-                                throw new RuntimeException("Type error: Return value " + returnValue + " is not a Character.");
-                            }
-                            break;
-                        default:
-                            throw new RuntimeException("Unknown return type annotation: " + expectedReturnType);
+                                break;
+                            case "Int32":
+                            case "Int64":
+                                if (!(returnValue instanceof Integer)) {
+                                    throw new RuntimeException("Type error: Return value " + returnValue + " is not an Integer.");
+                                }
+                                break;
+                            case "Float32":
+                                if (!(returnValue instanceof Float)) {
+                                    throw new RuntimeException("Type error: Return value " + returnValue + " is not a Float32.");
+                                }
+                                break;
+                            case "Float64":
+                                if (!(returnValue instanceof Double)) {
+                                    // Convert Integer to Double if necessary
+                                    if (returnValue instanceof Integer) {
+                                        returnValue = ((Integer) returnValue).doubleValue();
+                                    } else {
+                                        throw new RuntimeException("Type error: Return value " + returnValue + " is not a Float64.");
+                                    }
+                                }
+                                break;
+                            case "Char":
+                                if (!(returnValue instanceof Character)) {
+                                    throw new RuntimeException("Type error: Return value " + returnValue + " is not a Character.");
+                                }
+                                break;
+                            default:
+                                throw new RuntimeException("Unknown return type annotation: " + expectedReturnType);
+                        }
+                        return returnValue; // Exit the function immediately after return
                     }
-                    return returnValue; // Exit the function immediately after return
+                    // Use a local executor to ensure variable modifications are retained
+                    new Executor(localEnv).execute(line); // Pass the already trimmed line
+                } catch (Statements.BreakException | Statements.ContinueException e) {
+                    throw new RuntimeException("Break/continue statements are only allowed inside loops");
                 }
-                // Use a local executor to ensure variable modifications are retained
-                new Executor(localEnv).execute(line); // Pass the already trimmed line
             }
             return returnValue;
         }

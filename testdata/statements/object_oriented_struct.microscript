@@ -1,0 +1,11 @@
+struct Person {
+    var name: String;
+    var age: Float64;
+}
+
+function main() {
+    letexpr person1: Person = {"Jane", 35.0};
+    console.write(person1.age);
+}
+
+main();

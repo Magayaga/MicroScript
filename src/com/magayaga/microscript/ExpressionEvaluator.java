@@ -267,7 +267,7 @@ public class ExpressionEvaluator {
     }
 
     private Object parseTernary() {
-        Object condition = parseComparison();
+        Object condition = parseLogicalOr();
         skipWhitespace();
         
         // Look for ternary operator ?
@@ -292,6 +292,58 @@ public class ExpressionEvaluator {
         }
         
         return condition;
+    }
+
+    // Parse logical OR operator (||)
+    private Object parseLogicalOr() {
+        Object left = parseLogicalAnd();
+        skipWhitespace();
+        
+        while (ch == '|') {
+            nextChar();
+            if (ch == '|') {
+                nextChar(); // consume second |
+                skipWhitespace();
+                Object right = parseLogicalAnd();
+                
+                // Logical OR: return true if either operand is truthy
+                boolean leftTruthy = isTruthy(left);
+                boolean rightTruthy = isTruthy(right);
+                left = leftTruthy || rightTruthy;
+                skipWhitespace();
+            } else {
+                // Single | is not supported, throw error
+                throw new RuntimeException("Unexpected '|' at position " + pos + ". Did you mean '||'?");
+            }
+        }
+        
+        return left;
+    }
+
+    // Parse logical AND operator (&&)
+    private Object parseLogicalAnd() {
+        Object left = parseComparison();
+        skipWhitespace();
+        
+        while (ch == '&') {
+            nextChar();
+            if (ch == '&') {
+                nextChar(); // consume second &
+                skipWhitespace();
+                Object right = parseComparison();
+                
+                // Logical AND: return true only if both operands are truthy
+                boolean leftTruthy = isTruthy(left);
+                boolean rightTruthy = isTruthy(right);
+                left = leftTruthy && rightTruthy;
+                skipWhitespace();
+            } else {
+                // Single & is not supported, throw error
+                throw new RuntimeException("Unexpected '&' at position " + pos + ". Did you mean '&&'?");
+            }
+        }
+        
+        return left;
     }
 
     // Check if an object is truthy (non-zero for numbers, true for booleans)
@@ -495,6 +547,21 @@ public class ExpressionEvaluator {
 
     private Object parseFactor() {
         skipWhitespace();
+        
+        // Handle logical NOT operator (!)
+        if (ch == '!') {
+            // Check if it's not part of != operator
+            int nextPos = pos + 1;
+            if (nextPos < expression.length() && expression.charAt(nextPos) == '=') {
+                // This is part of !=, don't handle it here
+                throw new RuntimeException("Unexpected '!' at position " + pos);
+            }
+            
+            nextChar(); // consume !
+            skipWhitespace();
+            Object factor = parseFactor();
+            return !isTruthy(factor); // Logical NOT
+        }
         
         // Handle pre-increment and pre-decrement
         if (ch == '+') {
