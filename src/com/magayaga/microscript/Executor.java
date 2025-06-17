@@ -13,8 +13,6 @@ import java.util.regex.Pattern;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.Arrays;
-import java.util.Map;
-import java.util.LinkedHashMap;
 
 public class Executor {
     /* Change from private to package-private (default) access */
@@ -36,11 +34,7 @@ public class Executor {
     private static final Pattern PRE_DECREMENT_PATTERN = Pattern.compile("--([a-zA-Z_][a-zA-Z0-9_]*)\\s*;?");
     private static final Pattern POST_INCREMENT_PATTERN = Pattern.compile("([a-zA-Z_][a-zA-Z0-9_]*)\\+\\+\\s*;?");
     private static final Pattern POST_DECREMENT_PATTERN = Pattern.compile("([a-zA-Z_][a-zA-Z0-9_]*)--\\s*;?");
-    
-    // Patterns for struct field access
-    private static final Pattern STRUCT_FIELD_ACCESS_PATTERN = Pattern.compile("([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)");
-    private static final Pattern STRUCT_FIELD_ASSIGNMENT_PATTERN = Pattern.compile("([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)\\s*=\\s*(.+);?");
-    
+
     public Executor(Environment environment) {
         this.environment = environment;
     }
@@ -70,11 +64,6 @@ public class Executor {
             }
             if (expression.trim().equals("continue;") || expression.trim().equals("continue")) {
                 throw new Statements.ContinueException();
-            }
-
-            // Handle struct field assignment before increment/decrement
-            if (handleStructFieldAssignment(expression)) {
-                return;
             }
 
             // Handle increment/decrement operations first
@@ -251,56 +240,8 @@ public class Executor {
                 }
             }
             
-            else if (expression.startsWith("letexpr ")) {
-                // Handle immutable variable declaration with type annotation
-                String declaration = expression.substring(8).trim(); // Remove "letexpr "
-                int equalsIndex = declaration.indexOf('=');
-                if (equalsIndex != -1) {
-                    String varDeclaration = declaration.substring(0, equalsIndex).trim();
-                    String[] parts = varDeclaration.split(":");
-                    if (parts.length != 2) {
-                        throw new RuntimeException("Syntax error in letexpr declaration: " + expression);
-                    }
-                    String varName = parts[0].trim();
-                    String typeAnnotation = parts[1].trim();
-                    String valueExpression = declaration.substring(equalsIndex + 1).trim().replace(";", "");
-                    
-                    Object value;
-                    
-                    // Check if it's struct initialization
-                    if (valueExpression.startsWith("{") && valueExpression.endsWith("}")) {
-                        // This is struct initialization syntax
-                        Struct structDef = environment.getStruct(typeAnnotation);
-                        if (structDef == null) {
-                            throw new RuntimeException("Unknown struct type: " + typeAnnotation);
-                        }
-                        
-                        // Parse the initialization values
-                        String initValues = valueExpression.substring(1, valueExpression.length() - 1).trim();
-                        List<String> valueStrings = splitByCommaWithTrim(initValues);
-                        List<Object> values = new ArrayList<>();
-                        
-                        for (String valueStr : valueStrings) {
-                            values.add(evaluate(valueStr));
-                        }
-                        
-                        value = structDef.createInstance(values);
-                    } else {
-                        value = evaluate(valueExpression);
-                        
-                        // Ensure the value matches the type annotation for primitive types
-                        validateTypeAnnotation(value, typeAnnotation, valueExpression);
-                    }
-
-                    // Store as immutable variable
-                    environment.setImmutableVariable(varName, value);
-                } else {
-                    throw new RuntimeException("Syntax error in letexpr declaration: " + expression);
-                }
-            }
-            
             else if (expression.startsWith("var ")) {
-                // Handle mutable variable declaration with type annotation
+                // Handle variable declaration with type annotation
                 String declaration = expression.substring(4).trim();
                 int equalsIndex = declaration.indexOf('=');
                 if (equalsIndex != -1) {
@@ -312,37 +253,44 @@ public class Executor {
                     String varName = parts[0].trim();
                     String typeAnnotation = parts[1].trim();
                     String valueExpression = declaration.substring(equalsIndex + 1).trim().replace(";", "");
-                    
-                    Object value;
-                    
-                    // Check if it's struct initialization
-                    if (valueExpression.startsWith("{") && valueExpression.endsWith("}")) {
-                        // This is struct initialization syntax
-                        Struct structDef = environment.getStruct(typeAnnotation);
-                        if (structDef == null) {
-                            throw new RuntimeException("Unknown struct type: " + typeAnnotation);
-                        }
-                        
-                        // Parse the initialization values
-                        String initValues = valueExpression.substring(1, valueExpression.length() - 1).trim();
-                        List<String> valueStrings = splitByCommaWithTrim(initValues);
-                        List<Object> values = new ArrayList<>();
-                        
-                        for (String valueStr : valueStrings) {
-                            values.add(evaluate(valueStr));
-                        }
-                        
-                        value = structDef.createInstance(values);
-                    } else {
-                        value = evaluate(valueExpression);
-                        
-                        // Ensure the value matches the type annotation for primitive types
-                        validateTypeAnnotation(value, typeAnnotation, valueExpression);
+                    Object value = evaluate(valueExpression);
+
+                    // Ensure the value matches the type annotation
+                    switch (typeAnnotation) {
+                        case "String":
+                            if (!(value instanceof String)) {
+                                throw new RuntimeException("Type error: " + valueExpression + " is not a String.");
+                            }
+                            break;
+                        case "Int32":
+                        case "Int64":
+                            if (!(value instanceof Integer)) {
+                                throw new RuntimeException("Type error: " + valueExpression + " is not an Integer.");
+                            }
+                            break;
+                        case "Float32":
+                            if (!(value instanceof Float)) {
+                                throw new RuntimeException("Type error: " + valueExpression + " is not a Float32.");
+                            }
+                            break;
+                        case "Float64":
+                            if (!(value instanceof Double)) {
+                                throw new RuntimeException("Type error: " + valueExpression + " is not a Float64.");
+                            }
+                            break;
+                        case "Char":
+                            if (!(value instanceof Character)) {
+                                throw new RuntimeException("Type error: " + valueExpression + " is not a Character.");
+                            }
+                            break;
+                        default:
+                            throw new RuntimeException("Unknown type annotation: " + typeAnnotation);
                     }
 
-                    // Store as mutable variable
                     environment.setVariable(varName, value);
-                } else {
+                }
+                
+                else {
                     throw new RuntimeException("Syntax error in variable declaration: " + expression);
                 }
             }
@@ -420,79 +368,6 @@ public class Executor {
     }
 
     /**
-     * Validate type annotation for primitive types
-     */
-    private void validateTypeAnnotation(Object value, String typeAnnotation, String valueExpression) {
-        switch (typeAnnotation) {
-            case "String":
-                if (!(value instanceof String)) {
-                    throw new RuntimeException("Type error: " + valueExpression + " is not a String.");
-                }
-                break;
-            case "Int32":
-            case "Int64":
-                if (!(value instanceof Integer)) {
-                    throw new RuntimeException("Type error: " + valueExpression + " is not an Integer.");
-                }
-                break;
-            case "Float32":
-                if (!(value instanceof Float)) {
-                    throw new RuntimeException("Type error: " + valueExpression + " is not a Float32.");
-                }
-                break;
-            case "Float64":
-                if (!(value instanceof Double)) {
-                    throw new RuntimeException("Type error: " + valueExpression + " is not a Float64.");
-                }
-                break;
-            case "Char":
-                if (!(value instanceof Character)) {
-                    throw new RuntimeException("Type error: " + valueExpression + " is not a Character.");
-                }
-                break;
-            case "bool":
-                if (!(value instanceof Boolean)) {
-                    throw new RuntimeException("Type error: " + valueExpression + " is not a Boolean.");
-                }
-                break;
-            // For struct types, validation is handled in struct creation
-        }
-    }
-
-    /**
-     * Handle struct field assignment (e.g., person.name = "John")
-     */
-    private boolean handleStructFieldAssignment(String expression) {
-        Matcher matcher = STRUCT_FIELD_ASSIGNMENT_PATTERN.matcher(expression.trim());
-        if (matcher.matches()) {
-            String varName = matcher.group(1);
-            String fieldName = matcher.group(2);
-            String valueExpression = matcher.group(3);
-            
-            Object variable = environment.getVariable(varName);
-            if (variable == null) {
-                throw new RuntimeException("Undefined variable: " + varName);
-            }
-            
-            // Check if variable is immutable
-            if (environment.isImmutable(varName)) {
-                throw new RuntimeException("Cannot modify immutable variable: " + varName);
-            }
-            
-            if (!(variable instanceof Struct)) {
-                throw new RuntimeException("Variable " + varName + " is not a struct");
-            }
-            
-            Struct struct = (Struct) variable;
-            Object newValue = evaluate(valueExpression);
-            struct.setField(fieldName, newValue);
-            
-            return true;
-        }
-        return false;
-    }
-
-    /**
      * Handle increment and decrement operations (++var, var++, --var, var--)
      * @param expression The expression to check and potentially execute
      * @return true if the expression was an increment/decrement operation and was handled
@@ -508,11 +383,6 @@ public class Executor {
             
             if (currentValue == null) {
                 throw new RuntimeException("Undefined variable: " + varName);
-            }
-            
-            // Check if variable is immutable
-            if (environment.isImmutable(varName)) {
-                throw new RuntimeException("Cannot modify immutable variable: " + varName);
             }
             
             if (!(currentValue instanceof Number)) {
@@ -541,11 +411,6 @@ public class Executor {
                 throw new RuntimeException("Undefined variable: " + varName);
             }
             
-            // Check if variable is immutable
-            if (environment.isImmutable(varName)) {
-                throw new RuntimeException("Cannot modify immutable variable: " + varName);
-            }
-            
             if (!(currentValue instanceof Number)) {
                 throw new RuntimeException("Cannot decrement non-numeric variable: " + varName);
             }
@@ -572,11 +437,6 @@ public class Executor {
                 throw new RuntimeException("Undefined variable: " + varName);
             }
             
-            // Check if variable is immutable
-            if (environment.isImmutable(varName)) {
-                throw new RuntimeException("Cannot modify immutable variable: " + varName);
-            }
-            
             if (!(currentValue instanceof Number)) {
                 throw new RuntimeException("Cannot increment non-numeric variable: " + varName);
             }
@@ -601,11 +461,6 @@ public class Executor {
             
             if (currentValue == null) {
                 throw new RuntimeException("Undefined variable: " + varName);
-            }
-            
-            // Check if variable is immutable
-            if (environment.isImmutable(varName)) {
-                throw new RuntimeException("Cannot modify immutable variable: " + varName);
             }
             
             if (!(currentValue instanceof Number)) {

@@ -28,6 +28,8 @@ public class Statements {
     
     /**
      * Processes conditional statements (if/elif/else blocks) in the code
+     * Supports logical operators: ||, &&, ==, !=, <, >, <=, >=
+     * Examples: if (n == 0) || (n == 1), elif (n < 5) && (n > 2), etc.
      * @param lines The list of code lines to process
      * @param startIndex The starting index of the if statement
      * @param executor The executor to execute code blocks with
@@ -41,7 +43,7 @@ public class Statements {
         
         // Process the 'if' statement
         if (line != null && line.startsWith("if")) {
-            // Extract condition from if statement
+            // Extract condition from if statement with improved regex for complex conditions
             Pattern ifPattern = Pattern.compile("if\\s*\\((.+?)\\)\\s*(\\{)?");
             Matcher ifMatcher = ifPattern.matcher(line);
             
@@ -50,7 +52,9 @@ public class Statements {
             }
             
             String condition = ifMatcher.group(1).trim();
-            Object conditionResult = executor.evaluate(condition);
+            
+            // Use ExpressionEvaluator to properly evaluate complex conditions
+            Object conditionResult = evaluateCondition(condition, executor);
             boolean conditionValue = isTrue(conditionResult);
             
             // Find the opening brace for the if block
@@ -90,7 +94,7 @@ public class Statements {
                 currentIndex = (int) lineAndIndex[1];
                 if (line == null) break;
                 
-                // Handle 'elif' blocks
+                // Handle 'elif' blocks with complex condition support
                 if (line.startsWith("elif")) {
                     Pattern elifPattern = Pattern.compile("elif\\s*\\((.+?)\\)\\s*(\\{)?");
                     Matcher elifMatcher = elifPattern.matcher(line);
@@ -100,7 +104,9 @@ public class Statements {
                     }
                     
                     String elifCondition = elifMatcher.group(1).trim();
-                    Object elifResult = executor.evaluate(elifCondition);
+                    
+                    // Use ExpressionEvaluator for complex elif conditions
+                    Object elifResult = evaluateCondition(elifCondition, executor);
                     boolean elifValue = isTrue(elifResult);
                     
                     // Find the opening brace for the elif block
@@ -173,7 +179,24 @@ public class Statements {
     }
     
     /**
+     * Evaluates a condition using the ExpressionEvaluator to support complex logical expressions
+     * @param condition The condition string to evaluate
+     * @param executor The executor containing the environment for variable resolution
+     * @return The result of the condition evaluation
+     */
+    private static Object evaluateCondition(String condition, Executor executor) {
+        try {
+            // Use the ExpressionEvaluator to handle complex conditions with logical operators
+            ExpressionEvaluator evaluator = new ExpressionEvaluator(condition, executor.Environment());
+            return evaluator.parse();
+        } catch (Exception e) {
+            throw new RuntimeException("Error evaluating condition '" + condition + "': " + e.getMessage(), e);
+        }
+    }
+    
+    /**
      * Processes loop statements (for/while loops) with break/continue support
+     * Also supports complex conditions with logical operators
      * @param lines The list of code lines to process
      * @param startIndex The starting index of the loop statement
      * @param executor The executor to execute code blocks with
@@ -211,7 +234,7 @@ public class Statements {
     }
     
     /**
-     * Execute a loop block with break/continue support
+     * Execute a loop block with break/continue support and complex condition evaluation
      * @param lines List of code lines
      * @param startIndex Start index of the loop body
      * @param endIndex End index of the loop body
@@ -219,14 +242,11 @@ public class Statements {
      * @param loopDeclaration The loop declaration line (for condition checking)
      */
     private static void executeLoopBlock(List<String> lines, int startIndex, int endIndex, Executor executor, String loopDeclaration) {
-        // This is a simplified example - you'll need to implement actual loop logic
-        // based on your loop syntax (for/while conditions, initialization, increment, etc.)
-        
         boolean isWhileLoop = loopDeclaration.startsWith("while");
         boolean isForLoop = loopDeclaration.startsWith("for");
         
         if (isWhileLoop) {
-            // Extract while condition
+            // Extract while condition with support for complex expressions
             Pattern whilePattern = Pattern.compile("while\\s*\\((.+?)\\)");
             Matcher whileMatcher = whilePattern.matcher(loopDeclaration);
             if (!whileMatcher.find()) {
@@ -234,8 +254,8 @@ public class Statements {
             }
             String condition = whileMatcher.group(1).trim();
             
-            // Execute while loop
-            while (isTrue(executor.evaluate(condition))) {
+            // Execute while loop with complex condition support
+            while (isTrue(evaluateCondition(condition, executor))) {
                 try {
                     executeBlock(lines, startIndex, endIndex, executor);
                 } catch (BreakException e) {
@@ -247,9 +267,49 @@ public class Statements {
                 }
             }
         } else if (isForLoop) {
-            // For loop implementation would go here
-            // This is a placeholder - implement based on your for loop syntax
-            throw new RuntimeException("For loop implementation needed");
+            // Enhanced for loop implementation
+            Pattern forPattern = Pattern.compile("for\\s*\\((.+?)\\)");
+            Matcher forMatcher = forPattern.matcher(loopDeclaration);
+            if (!forMatcher.find()) {
+                throw new RuntimeException("Invalid for loop syntax: " + loopDeclaration);
+            }
+            
+            String forContent = forMatcher.group(1).trim();
+            
+            // Split by semicolons for C-style for loops: for (init; condition; increment)
+            String[] forParts = forContent.split(";");
+            if (forParts.length == 3) {
+                String initialization = forParts[0].trim();
+                String condition = forParts[1].trim();
+                String increment = forParts[2].trim();
+                
+                // Execute initialization
+                if (!initialization.isEmpty()) {
+                    executor.execute(initialization);
+                }
+                
+                // Execute loop with condition and increment
+                while (condition.isEmpty() || isTrue(evaluateCondition(condition, executor))) {
+                    try {
+                        executeBlock(lines, startIndex, endIndex, executor);
+                    } catch (BreakException e) {
+                        break;
+                    } catch (ContinueException e) {
+                        // Execute increment before continuing
+                        if (!increment.isEmpty()) {
+                            executor.execute(increment);
+                        }
+                        continue;
+                    }
+                    
+                    // Execute increment
+                    if (!increment.isEmpty()) {
+                        executor.execute(increment);
+                    }
+                }
+            } else {
+                throw new RuntimeException("For loop must have format: for (init; condition; increment)");
+            }
         }
     }
     
