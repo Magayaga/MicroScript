@@ -187,7 +187,7 @@ public class Statements {
     private static Object evaluateCondition(String condition, Executor executor) {
         try {
             // Use the ExpressionEvaluator to handle complex conditions with logical operators
-            ExpressionEvaluator evaluator = new ExpressionEvaluator(condition, executor.Environment());
+            ExpressionEvaluator evaluator = new ExpressionEvaluator(condition, executor.getEnvironment());
             return evaluator.parse();
         } catch (Exception e) {
             throw new RuntimeException("Error evaluating condition '" + condition + "': " + e.getMessage(), e);

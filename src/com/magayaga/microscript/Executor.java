@@ -17,6 +17,9 @@ import java.util.Arrays;
 public class Executor {
     /* Change from private to package-private (default) access */
     final Environment environment;
+    
+    // Flag to track if we're inside a loop context
+    private boolean inLoopContext = false;
 
     // Pre-compiled regex patterns
     private static final Pattern CONSOLE_WRITE_PATTERN = Pattern.compile("console\\.write\\((.*)\\);");
@@ -37,6 +40,15 @@ public class Executor {
 
     public Executor(Environment environment) {
         this.environment = environment;
+    }
+    
+    public Executor(Environment environment, boolean inLoopContext) {
+        this.environment = environment;
+        this.inLoopContext = inLoopContext;
+    }
+
+    public Environment getEnvironment() {
+        return environment;
     }
 
     public static List<String> splitByCommaWithTrim(String input) {
@@ -59,10 +71,17 @@ public class Executor {
             }
 
             // Handle break and continue statements
-            if (expression.trim().equals("break;") || expression.trim().equals("break")) {
+            String trimmed = expression.trim();
+            if (trimmed.equals("break;") || trimmed.equals("break")) {
+                if (!inLoopContext) {
+                    throw new RuntimeException("Break statement can only be used inside loops");
+                }
                 throw new Statements.BreakException();
             }
-            if (expression.trim().equals("continue;") || expression.trim().equals("continue")) {
+            if (trimmed.equals("continue;") || trimmed.equals("continue")) {
+                if (!inLoopContext) {
+                    throw new RuntimeException("Continue statement can only be used inside loops");
+                }
                 throw new Statements.ContinueException();
             }
 
@@ -362,6 +381,11 @@ public class Executor {
             }
         }
         
+        catch (Statements.BreakException | Statements.ContinueException e) {
+            // Re-throw these exceptions to be caught by the appropriate loop handler
+            throw e;
+        }
+        
         catch (Exception e) {
             System.out.println("Evaluation error: " + e.getMessage());
         }
@@ -601,7 +625,7 @@ public class Executor {
                     if (line.startsWith("if")) {
                         try {
                             // Use the Statements class to process the conditional
-                            int newIndex = Statements.processConditionalStatement(body, i, new Executor(localEnv));
+                            int newIndex = Statements.processConditionalStatement(body, i, new Executor(localEnv, false));
                             i = newIndex - 1; // -1 because the loop will increment i
                             continue;
                         } catch (Statements.BreakException | Statements.ContinueException e) {
@@ -611,14 +635,14 @@ public class Executor {
                     
                     // Handle for loops
                     if (line.startsWith("for")) {
-                        int newIndex = ForLoop.processForLoop(body, i, new Executor(localEnv));
+                        int newIndex = ForLoop.processForLoop(body, i, new Executor(localEnv, true));
                         i = newIndex - 1;
                         continue;
                     }
                     
                     // Handle while loops
                     if (line.startsWith("while")) {
-                        int newIndex = Loop.processLoop(body, i, new Executor(localEnv));
+                        int newIndex = Loop.processLoop(body, i, new Executor(localEnv, true));
                         i = newIndex - 1;
                         continue;
                     }
@@ -626,7 +650,7 @@ public class Executor {
                     // Handle switch statements
                     if (line.startsWith("switch")) {
                         // Process the switch statement
-                        int newIndex = Switch.processSwitchStatement(body, i, new Executor(localEnv));
+                        int newIndex = Switch.processSwitchStatement(body, i, new Executor(localEnv, false));
                         
                         // Ensure we're making progress
                         if (newIndex <= i) {
@@ -682,7 +706,7 @@ public class Executor {
                         return returnValue; // Exit the function immediately after return
                     }
                     // Use a local executor to ensure variable modifications are retained
-                    new Executor(localEnv).execute(line); // Pass the already trimmed line
+                    new Executor(localEnv, false).execute(line); // Pass the already trimmed line
                 } catch (Statements.BreakException | Statements.ContinueException e) {
                     throw new RuntimeException("Break/continue statements are only allowed inside loops");
                 }

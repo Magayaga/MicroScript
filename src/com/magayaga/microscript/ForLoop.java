@@ -22,6 +22,71 @@ public class ForLoop {
     public static int processForLoop(List<String> lines, int startIndex, Executor executor) {
         String line = lines.get(startIndex).trim();
         
+        // Check if this is a range-based for loop (for-each style)
+        if (isRangeBasedForLoop(line)) {
+            return processRangeBasedForLoop(lines, startIndex, executor);
+        } else {
+            return processTraditionalForLoop(lines, startIndex, executor);
+        }
+    }
+    
+    /**
+     * Check if the for loop is range-based (for-each style)
+     * @param line The for loop line to check
+     * @return true if it's a range-based for loop, false otherwise
+     */
+    private static boolean isRangeBasedForLoop(String line) {
+        // Pattern to match: for (type variableName : arrayName)
+        Pattern rangePattern = Pattern.compile("for\\s*\\(\\s*([^:]+)\\s*:\\s*([^)]+)\\s*\\)");
+        return rangePattern.matcher(line).find();
+    }
+    
+    /**
+     * Process a range-based for loop (for-each style)
+     * @param lines The list of code lines to process
+     * @param startIndex The starting index of the for statement
+     * @param executor The executor to execute code blocks with
+     * @return The index after the entire for loop block
+     */
+    private static int processRangeBasedForLoop(List<String> lines, int startIndex, Executor executor) {
+        String line = lines.get(startIndex).trim();
+        
+        // Parse the range-based for loop syntax
+        RangeBasedForComponents components = parseRangeBasedForSyntax(line);
+        
+        // Find the opening brace for the for block
+        int blockStartIndex = startIndex;
+        if (!components.hasOpeningBrace) {
+            blockStartIndex = findNextOpeningBrace(lines, startIndex + 1);
+            if (blockStartIndex == -1) {
+                throw new RuntimeException("Missing opening brace for range-based for loop at or after line: " + line);
+            }
+        }
+        
+        // Find the end of the for block
+        int blockEndIndex = findMatchingClosingBrace(lines, blockStartIndex);
+        if (blockEndIndex == -1) {
+            throw new RuntimeException("Missing closing brace for range-based for loop starting at line: " + line);
+        }
+        
+        // Execute the range-based for loop
+        executeRangeBasedForLoop(components.variableDeclaration, components.arrayName,
+                                lines, blockStartIndex + 1, blockEndIndex, executor);
+        
+        // Return the index after the for block
+        return blockEndIndex + 1;
+    }
+    
+    /**
+     * Process a traditional for loop (C-style)
+     * @param lines The list of code lines to process
+     * @param startIndex The starting index of the for statement
+     * @param executor The executor to execute code blocks with
+     * @return The index after the entire for loop block
+     */
+    private static int processTraditionalForLoop(List<String> lines, int startIndex, Executor executor) {
+        String line = lines.get(startIndex).trim();
+        
         // Extract for loop components from the statement
         // Support both: for (var varName: Type = initValue; condition; increment)
         // and: for (existingVar = initValue; condition; increment)
@@ -56,6 +121,21 @@ public class ForLoop {
     }
     
     /**
+     * Helper class to hold parsed range-based for loop components
+     */
+    private static class RangeBasedForComponents {
+        String variableDeclaration; // e.g., "int item" or "var item: Integer"
+        String arrayName;          // e.g., "myArray"
+        boolean hasOpeningBrace;
+        
+        RangeBasedForComponents(String variableDeclaration, String arrayName, boolean hasOpeningBrace) {
+            this.variableDeclaration = variableDeclaration;
+            this.arrayName = arrayName;
+            this.hasOpeningBrace = hasOpeningBrace;
+        }
+    }
+    
+    /**
      * Helper class to hold parsed for loop components
      */
     private static class ForLoopComponents {
@@ -73,6 +153,27 @@ public class ForLoop {
             this.isNewVariable = isNewVariable;
             this.hasOpeningBrace = hasOpeningBrace;
         }
+    }
+    
+    /**
+     * Parse range-based for loop syntax and extract components
+     * @param line The range-based for loop line to parse
+     * @return RangeBasedForComponents containing parsed information
+     */
+    private static RangeBasedForComponents parseRangeBasedForSyntax(String line) {
+        // Pattern to match: for (type variableName : arrayName) or for (var variableName: Type : arrayName)
+        Pattern rangePattern = Pattern.compile("for\\s*\\(\\s*([^:]+)\\s*:\\s*([^)]+)\\s*\\)\\s*(\\{)?");
+        Matcher rangeMatcher = rangePattern.matcher(line);
+        
+        if (!rangeMatcher.find()) {
+            throw new RuntimeException("Invalid range-based for loop syntax at line: " + line);
+        }
+        
+        String variableDeclaration = rangeMatcher.group(1).trim();
+        String arrayName = rangeMatcher.group(2).trim();
+        boolean hasOpeningBrace = rangeMatcher.group(3) != null;
+        
+        return new RangeBasedForComponents(variableDeclaration, arrayName, hasOpeningBrace);
     }
     
     /**
@@ -104,6 +205,186 @@ public class ForLoop {
             isNewVariable,
             hasOpeningBrace
         );
+    }
+    
+    /**
+     * Execute a range-based for loop (for-each style)
+     * @param variableDeclaration The loop variable declaration (e.g., "int item" or "var item: Integer")
+     * @param arrayName The name of the array/collection to iterate over
+     * @param lines List of code lines
+     * @param startIndex Start index of the loop body
+     * @param endIndex End index of the loop body
+     * @param executor The executor to execute the loop with
+     */
+    private static void executeRangeBasedForLoop(String variableDeclaration, String arrayName,
+                                               List<String> lines, int startIndex, int endIndex, 
+                                               Executor executor) {
+        final int MAX_ITERATIONS = 1000000;
+        int iterations = 0;
+        
+        try {
+            // Get the array/collection from the executor
+            Object arrayObject;
+            try {
+                arrayObject = executor.evaluate(arrayName);
+            } catch (Exception e) {
+                throw new RuntimeException("Error evaluating array/collection '" + arrayName + "': " + e.getMessage());
+            }
+            
+            if (arrayObject == null) {
+                throw new RuntimeException("Array/collection '" + arrayName + "' is null");
+            }
+            
+            // Convert to iterable (this will depend on your MicroScript type system)
+            Iterable<?> iterable = convertToIterable(arrayObject);
+            
+            if (iterable == null) {
+                throw new RuntimeException("'" + arrayName + "' is not iterable");
+            }
+            
+            // Extract variable name from declaration
+            String variableName = extractVariableName(variableDeclaration);
+            
+            // Iterate over each element
+            for (Object element : iterable) {
+                // Safety check for infinite loops
+                if (iterations >= MAX_ITERATIONS) {
+                    throw new RuntimeException("Possible infinite loop detected: exceeded " + 
+                                             MAX_ITERATIONS + " iterations");
+                }
+                
+                // Assign the current element to the loop variable
+                try {
+                    // If it's a new variable declaration, create it
+                    if (variableDeclaration.startsWith("var ") || variableDeclaration.contains(" ")) {
+                        // For MicroScript, you might need to handle type declarations differently
+                        // This assumes the executor can handle variable assignment
+                        executor.execute(variableName + " = " + formatValueForAssignment(element));
+                    } else {
+                        // Just assign to existing variable
+                        executor.execute(variableName + " = " + formatValueForAssignment(element));
+                    }
+                } catch (Exception e) {
+                    throw new RuntimeException("Error assigning loop variable '" + variableName + "': " + e.getMessage());
+                }
+                
+                // Execute the loop body
+                LoopControl loopControl = executeLoopBlock(lines, startIndex, endIndex, executor);
+                
+                // Handle loop control statements
+                if (loopControl == LoopControl.BREAK) {
+                    break;
+                } else if (loopControl == LoopControl.CONTINUE) {
+                    iterations++;
+                    continue;
+                } else if (loopControl == LoopControl.RETURN) {
+                    // Return statement encountered, exit the loop
+                    break;
+                }
+                
+                iterations++;
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Error in range-based for loop execution: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Convert an object to an Iterable for range-based for loops
+     * This method should be adapted based on your MicroScript type system
+     * @param arrayObject The object to convert
+     * @return An Iterable, or null if conversion is not possible
+     */
+    private static Iterable<?> convertToIterable(Object arrayObject) {
+        if (arrayObject instanceof Iterable) {
+            return (Iterable<?>) arrayObject;
+        }
+        
+        // Handle arrays
+        if (arrayObject.getClass().isArray()) {
+            // Convert array to list for iteration
+            if (arrayObject instanceof Object[]) {
+                return java.util.Arrays.asList((Object[]) arrayObject);
+            } else if (arrayObject instanceof int[]) {
+                int[] intArray = (int[]) arrayObject;
+                java.util.List<Integer> list = new java.util.ArrayList<>();
+                for (int value : intArray) {
+                    list.add(value);
+                }
+                return list;
+            } else if (arrayObject instanceof double[]) {
+                double[] doubleArray = (double[]) arrayObject;
+                java.util.List<Double> list = new java.util.ArrayList<>();
+                for (double value : doubleArray) {
+                    list.add(value);
+                }
+                return list;
+            } else if (arrayObject instanceof boolean[]) {
+                boolean[] boolArray = (boolean[]) arrayObject;
+                java.util.List<Boolean> list = new java.util.ArrayList<>();
+                for (boolean value : boolArray) {
+                    list.add(value);
+                }
+                return list;
+            }
+            // Add more primitive array types as needed
+        }
+        
+        // Handle strings as character sequences
+        if (arrayObject instanceof String) {
+            String str = (String) arrayObject;
+            java.util.List<Character> chars = new java.util.ArrayList<>();
+            for (char c : str.toCharArray()) {
+                chars.add(c);
+            }
+            return chars;
+        }
+        
+        return null; // Not iterable
+    }
+    
+    /**
+     * Extract the variable name from a variable declaration
+     * @param variableDeclaration The variable declaration (e.g., "int item", "var item: Integer")
+     * @return The variable name
+     */
+    private static String extractVariableName(String variableDeclaration) {
+        // Handle MicroScript-style declarations: "var name: Type"
+        if (variableDeclaration.startsWith("var ")) {
+            String withoutVar = variableDeclaration.substring(4).trim();
+            int colonIndex = withoutVar.indexOf(':');
+            if (colonIndex != -1) {
+                return withoutVar.substring(0, colonIndex).trim();
+            } else {
+                return withoutVar;
+            }
+        }
+        
+        // Handle C-style declarations: "type name"
+        String[] parts = variableDeclaration.trim().split("\\s+");
+        if (parts.length >= 2) {
+            return parts[parts.length - 1]; // Return the last part as variable name
+        }
+        
+        // If it's just a name without type
+        return variableDeclaration.trim();
+    }
+    
+    /**
+     * Format a value for assignment in MicroScript syntax
+     * @param value The value to format
+     * @return The formatted value as a string
+     */
+    private static String formatValueForAssignment(Object value) {
+        if (value == null) {
+            return "null";
+        } else if (value instanceof String) {
+            return "\"" + value.toString().replace("\"", "\\\"") + "\"";
+        } else if (value instanceof Character) {
+            return "'" + value.toString().replace("'", "\\'") + "'";
+        } else {
+            return value.toString();
+        }
     }
     
     /**
