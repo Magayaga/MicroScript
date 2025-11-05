@@ -1,13 +1,13 @@
 // Compute the area of a rectangle using MicroScript
 // Copyright (c) 2024 Cyril John Magayaga
 
-function rectangle_area(length: Int64, width: Int64) -> Int64 {
+function rectangle_area(length: Float64, width: Float64) -> Float64 {
     return length * width;
 }
 
 // Main function
 function main() {
-    console.write(rectangle_area(5, 3));
+    console.write(rectangle_area(2 -1, 3));
 }
 
 // Call the main function

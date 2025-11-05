@@ -136,8 +136,9 @@ public class Struct {
             case "String":
                 return value instanceof String;
             case "Int32":
-            case "Int64":
                 return value instanceof Integer;
+            case "Int64":
+                return value instanceof Long;
             case "Float32":
                 return value instanceof Float;
             case "Float64":
