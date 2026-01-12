@@ -1,7 +1,10 @@
+// For loop break using MicroScript
+// Copyright (c) 2025, 2026 Cyril John Magayaga
+
 function main() {
     for (var i: Float64 = 0; i < 10; i++) {
         if (i == 9) {
-            break
+            break;
         }
         console.write(i);
     }

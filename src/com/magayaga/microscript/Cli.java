@@ -40,7 +40,7 @@ public class Cli {
 
     public static void printAbout() {
         System.out.println(BLUE + "MicroScript - The programming language" + RESET);
-        System.out.println("Copyright (c) 2024-2025 " + GREEN + "Cyril John Magayaga" + RESET);
+        System.out.println("Copyright (c) 2024-2026 " + GREEN + "Cyril John Magayaga" + RESET);
     }
 
     // Example entry point for CLI testing
