@@ -150,4 +150,5 @@ main();
 
 ## Copyright
 
-Copyright (c) 2024-2025 [Cyril John Magayaga](https://github.com/magayaga). Licensed under the [MIT license](LICENSE).
+Copyright (c) 2024-2026 [Cyril John Magayaga](https://github.com/magayaga). Licensed under the [MIT license](LICENSE).
+
