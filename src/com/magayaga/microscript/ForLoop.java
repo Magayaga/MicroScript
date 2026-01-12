@@ -1,6 +1,6 @@
 /**
- * MicroScript â€" The programming language
- * Copyright (c) 2025 Cyril John Magayaga
+ * MicroScript — The programming language
+ * Copyright (c) 2025-2026 Cyril John Magayaga
  *
  * It was originally written in Java programming language.
  */
