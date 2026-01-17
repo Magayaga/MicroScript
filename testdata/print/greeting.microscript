@@ -1,9 +1,10 @@
-function greeting() {
-    return "Hello, World!";
-}
+// "Hello, World!" program using MicroScript
+// Copyright (c) 2026 Cyril John Magayaga
 
 function main() {
-    console.write(greeting());
+    var full_name : String = input("Enter your name: ");
+    var greeting : String = "My name is {full_name}!";
+    console.write(greeting);
 }
 
 main();

@@ -1,6 +1,6 @@
 /**
  * MicroScript — The programming language
- * Copyright (c) 2025 Cyril John Magayaga
+ * Copyright (c) 2025-2026 Cyril John Magayaga
  * 
  * It was originally written in Java programming language.
  */
@@ -80,19 +80,13 @@ public class WhileLoop {
                 break;
             }
             
-            // Execute the loop body
-            LoopControl loopControl = executeLoopBlock(lines, startIndex, endIndex, executor);
-            
-            // Handle loop control statements
-            if (loopControl == LoopControl.BREAK) {
+            try {
+                executeLoopBlock(lines, startIndex, endIndex, executor);
+            } catch (Statements.BreakException e) {
                 break;
-            } else if (loopControl == LoopControl.CONTINUE) {
-                // Continue to next iteration
+            } catch (Statements.ContinueException e) {
                 iterations++;
                 continue;
-            } else if (loopControl == LoopControl.RETURN) {
-                // Return statement encountered, exit the loop
-                break;
             }
             
             // Increment iteration count to prevent infinite loops
@@ -107,16 +101,6 @@ public class WhileLoop {
     }
     
     /**
-     * Enum to represent loop control flow
-     */
-    private enum LoopControl {
-        CONTINUE,   // Continue to next iteration
-        BREAK,      // Break out of the loop
-        RETURN,     // Return from function
-        NORMAL      // Normal execution
-    }
-    
-    /**
      * Execute a block of code within the loop
      * @param lines List of code lines
      * @param startIndex Start index of the block
@@ -124,7 +108,8 @@ public class WhileLoop {
      * @param executor The executor to use
      * @return LoopControl indicating how the loop should proceed
      */
-    private static LoopControl executeLoopBlock(List<String> lines, int startIndex, int endIndex, Executor executor) {
+    private static void executeLoopBlock(List<String> lines, int startIndex, int endIndex, 
+                                        Executor executor) throws Statements.BreakException, Statements.ContinueException {
         for (int i = startIndex; i < endIndex; i++) {
             String line = lines.get(i).trim();
             
@@ -141,20 +126,20 @@ public class WhileLoop {
                 continue;
             }
             
-            // Handle break statements
+            // Handle break - throw exception to propagate up
             if (line.equals("break") || line.equals("break;")) {
-                return LoopControl.BREAK;
+                throw new Statements.BreakException();
             }
             
-            // Handle continue statements
+            // Handle continue - throw exception to propagate up
             if (line.equals("continue") || line.equals("continue;")) {
-                return LoopControl.CONTINUE;
+                throw new Statements.ContinueException();
             }
             
             // Handle return statements
             if (line.startsWith("return")) {
                 executor.execute(line);
-                return LoopControl.RETURN;
+                throw new Statements.BreakException(); // Treat return as break
             }
             
             // Handle nested if statements
@@ -165,8 +150,11 @@ public class WhileLoop {
                     
                     // Make sure we advance properly
                     if (newIndex > i) {
-                        i = newIndex - 1; // -1 because the for loop will increment i
+                        i = newIndex - 1;
                     }
+                } catch (Statements.BreakException | Statements.ContinueException e) {
+                    // Propagate break/continue from nested if
+                    throw e;
                 } catch (Exception e) {
                     throw new RuntimeException("Error processing if statement in while loop: " + e.getMessage());
                 }
@@ -181,7 +169,7 @@ public class WhileLoop {
                     
                     // Make sure we advance properly
                     if (newIndex > i) {
-                        i = newIndex - 1; // -1 because the for loop will increment i
+                        i = newIndex - 1;
                     }
                 } catch (Exception e) {
                     throw new RuntimeException("Error processing nested while loop: " + e.getMessage());
@@ -192,15 +180,14 @@ public class WhileLoop {
             // Handle for loops (if you have them)
             if (line.startsWith("for")) {
                 try {
-                    // Assuming you have a ForLoop class similar to WhileLoop
-                    // int newIndex = ForLoop.processForLoop(lines, i, executor);
-                    // if (newIndex > i) {
-                    //     i = newIndex - 1;
-                    // }
-                    throw new RuntimeException("For loops not yet implemented in while loop context");
+                    int newIndex = ForLoop.processForLoop(lines, i, executor);
+                    if (newIndex > i) {
+                        i = newIndex - 1;
+                    }
                 } catch (Exception e) {
                     throw new RuntimeException("Error processing for loop in while loop: " + e.getMessage());
                 }
+                continue;
             }
             
             try {
@@ -210,8 +197,6 @@ public class WhileLoop {
                 throw new RuntimeException("Error executing statement in while loop: '" + line + "' - " + e.getMessage());
             }
         }
-        
-        return LoopControl.NORMAL; // Normal execution completed
     }
     
     /**
@@ -264,20 +249,15 @@ public class WhileLoop {
                 } else if (c == '}') {
                     braceCount--;
                     if (foundOpenBrace && braceCount == 0) {
-                        return i; // Found matching closing brace
+                        return i;
                     }
                 }
             }
         }
         
-        return -1; // No matching closing brace found
+        return -1;
     }
     
-    /**
-     * Determine if an object should be considered truthy for loop conditions
-     * @param value The object to check
-     * @return true if the object is truthy, false otherwise
-     */
     private static boolean isTruthyValue(Object value) {
         if (value == null) {
             return false;
@@ -288,17 +268,14 @@ public class WhileLoop {
         }
         
         if (value instanceof Number) {
-            // Consider non-zero numbers as true
             double numValue = ((Number) value).doubleValue();
-            return Math.abs(numValue) > 0.0001; // Account for floating point imprecision
+            return Math.abs(numValue) > 0.0001;
         }
         
         if (value instanceof String) {
-            // Consider non-empty strings as true
             return !((String) value).isEmpty();
         }
         
-        // For any other object, consider it true
         return true;
     }
 }

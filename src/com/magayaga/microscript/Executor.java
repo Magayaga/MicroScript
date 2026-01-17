@@ -1,6 +1,6 @@
 /**
  * MicroScript — The programming language
- * Copyright (c) 2024-2025 Cyril John Magayaga
+ * Copyright (c) 2024-2026 Cyril John Magayaga
  * 
  * It was originally written in Java programming language.
  */
@@ -13,6 +13,7 @@ import java.util.regex.Pattern;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.Arrays;
+import java.util.Scanner;
 
 public class Executor {
     /* Change from private to package-private (default) access */
@@ -20,6 +21,8 @@ public class Executor {
     
     // Flag to track if we're inside a loop context
     private boolean inLoopContext = false;
+    
+    private static Scanner scanner = new Scanner(System.in);
 
     // Pre-compiled regex patterns
     private static final Pattern CONSOLE_WRITE_PATTERN = Pattern.compile("console\\.write\\((.*)\\);");
@@ -37,6 +40,9 @@ public class Executor {
     private static final Pattern PRE_DECREMENT_PATTERN = Pattern.compile("--([a-zA-Z_][a-zA-Z0-9_]*)\\s*;?");
     private static final Pattern POST_INCREMENT_PATTERN = Pattern.compile("([a-zA-Z_][a-zA-Z0-9_]*)\\+\\+\\s*;?");
     private static final Pattern POST_DECREMENT_PATTERN = Pattern.compile("([a-zA-Z_][a-zA-Z0-9_]*)--\\s*;?");
+    
+    // Pattern for input operation
+    private static final Pattern INPUT_PATTERN = Pattern.compile("input\\((.*)\\)");
 
     public Executor(Environment environment) {
         this.environment = environment;
@@ -505,6 +511,27 @@ public class Executor {
         
         return false; // Not an increment/decrement operation
     }
+    
+    /**
+     * Handle the input() function to read user input from console
+     * @param prompt Optional prompt message to display to the user
+     * @return The user's input as a String
+     */
+    private String handleInput(String prompt) {
+        if (prompt != null && !prompt.isEmpty()) {
+            // Remove quotes from prompt if present
+            if (prompt.startsWith("\"") && prompt.endsWith("\"")) {
+                prompt = prompt.substring(1, prompt.length() - 1);
+            }
+            System.out.print(prompt);
+        }
+        
+        if (scanner.hasNextLine()) {
+            return scanner.nextLine();
+        }
+        
+        return "";
+    }
 
     // Helper method to split arguments respecting quotes and nested structures
     private List<String> splitArguments(String content) {
@@ -554,6 +581,8 @@ public class Executor {
         }
         reader.close();
     }
+    
+    
 
     public Object executeFunction(String functionName, String[] args) {
         Function function = environment.getFunction(functionName);
@@ -793,6 +822,21 @@ public class Executor {
             String args = matcher.group(2).trim();
             String[] arguments = args.isEmpty() ? new String[0] : splitByCommaWithTrim(args).toArray(new String[0]);
             return executeFunction(functionName, arguments);
+        }
+        
+        // Check if the expression is an input() call
+        Matcher inputMatcher = INPUT_PATTERN.matcher(expression);
+        if (inputMatcher.matches()) {
+            String promptArg = inputMatcher.group(1).trim();
+            String prompt = "";
+            
+            if (!promptArg.isEmpty()) {
+                // Evaluate the prompt argument (it might be a variable or expression)
+                Object promptObj = evaluate(promptArg);
+                prompt = promptObj != null ? promptObj.toString() : "";
+            }
+            
+            return handleInput(prompt);
         }
 
         // Example for function call:

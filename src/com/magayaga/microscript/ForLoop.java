@@ -99,8 +99,7 @@ public class ForLoop {
             blockStartIndex = findNextOpeningBrace(lines, startIndex + 1);
             if (blockStartIndex == -1) {
                 throw new RuntimeException(
-                    "Missing opening brace for range-based for loop at or after line: " +
-                        line
+                    "Missing opening brace for range-based for loop at or after line: " + line
                 );
             }
         }
@@ -109,8 +108,7 @@ public class ForLoop {
         int blockEndIndex = findMatchingClosingBrace(lines, blockStartIndex);
         if (blockEndIndex == -1) {
             throw new RuntimeException(
-                "Missing closing brace for range-based for loop starting at line: " +
-                    line
+                "Missing closing brace for range-based for loop starting at line: " + line
             );
         }
 
@@ -148,18 +146,12 @@ public class ForLoop {
 
         ForLoopComponents components = parseForLoopSyntax(line);
 
-        String initialization = components.initialization;
-        String condition = components.condition;
-        String increment = components.increment;
-
-        // Find the opening brace for the for block
         int blockStartIndex = startIndex;
         if (!components.hasOpeningBrace) {
             blockStartIndex = findNextOpeningBrace(lines, startIndex + 1);
             if (blockStartIndex == -1) {
                 throw new RuntimeException(
-                    "Missing opening brace for for loop at or after line: " +
-                        line
+                    "Missing opening brace for for loop at or after line: " + line
                 );
             }
         }
@@ -174,9 +166,9 @@ public class ForLoop {
 
         // Execute the for loop
         executeForLoop(
-            initialization,
-            condition,
-            increment,
+            components.initialization,
+            components.condition,
+            components.increment,
             components.isNewVariable,
             lines,
             blockStartIndex + 1,
@@ -184,17 +176,12 @@ public class ForLoop {
             executor
         );
 
-        // Return the index after the for block
         return blockEndIndex + 1;
     }
 
-    /**
-     * Helper class to hold parsed range-based for loop components
-     */
     private static class RangeBasedForComponents {
-
-        String variableDeclaration; // e.g., "int item" or "var item: Integer"
-        String arrayName; // e.g., "myArray"
+        String variableDeclaration;
+        String arrayName;
         boolean hasOpeningBrace;
 
         RangeBasedForComponents(
@@ -212,7 +199,6 @@ public class ForLoop {
      * Helper class to hold parsed for loop components
      */
     private static class ForLoopComponents {
-
         String initialization;
         String condition;
         String increment;
@@ -234,15 +220,7 @@ public class ForLoop {
         }
     }
 
-    /**
-     * Parse range-based for loop syntax and extract components
-     * @param line The range-based for loop line to parse
-     * @return RangeBasedForComponents containing parsed information
-     */
-    private static RangeBasedForComponents parseRangeBasedForSyntax(
-        String line
-    ) {
-        // Pattern to match: for (type variableName : arrayName) or for (var variableName : arrayName)
+    private static RangeBasedForComponents parseRangeBasedForSyntax(String line) {
         Pattern rangePattern = Pattern.compile(
             "for\\s*\\(\\s*([^:]+)\\s*:\\s*([^)]+)\\s*\\)\\s*(\\{)?"
         );
@@ -271,7 +249,6 @@ public class ForLoop {
      * @return ForLoopComponents containing parsed information
      */
     private static ForLoopComponents parseForLoopSyntax(String line) {
-        // More flexible pattern that captures the entire for loop structure
         Pattern forPattern = Pattern.compile(
             "for\\s*\\(\\s*([^;]+)\\s*;\\s*([^;]+)\\s*;\\s*([^)]+)\\s*\\)\\s*(\\{)?"
         );
@@ -327,26 +304,18 @@ public class ForLoop {
                 arrayObject = executor.evaluate(arrayName);
             } catch (Exception e) {
                 throw new RuntimeException(
-                    "Error evaluating array/collection '" +
-                        arrayName +
-                        "': " +
-                        e.getMessage()
+                    "Error evaluating array/collection '" + arrayName + "': " + e.getMessage()
                 );
             }
 
             if (arrayObject == null) {
-                throw new RuntimeException(
-                    "Array/collection '" + arrayName + "' is null"
-                );
+                throw new RuntimeException("Array/collection '" + arrayName + "' is null");
             }
 
             // Convert to iterable (this will depend on your MicroScript type system)
             Iterable<?> iterable = convertToIterable(arrayObject);
-
             if (iterable == null) {
-                throw new RuntimeException(
-                    "'" + arrayName + "' is not iterable"
-                );
+                throw new RuntimeException("'" + arrayName + "' is not iterable");
             }
 
             // Extract variable name from declaration
@@ -357,64 +326,34 @@ public class ForLoop {
                 // Safety check for infinite loops
                 if (iterations >= MAX_ITERATIONS) {
                     throw new RuntimeException(
-                        "Possible infinite loop detected: exceeded " +
-                            MAX_ITERATIONS +
-                            " iterations"
+                        "Possible infinite loop detected: exceeded " + MAX_ITERATIONS + " iterations"
                     );
                 }
 
                 // Assign the current element to the loop variable
                 try {
-                    // If it's a new variable declaration, create it
-                    if (
-                        variableDeclaration.startsWith("var ") ||
-                        variableDeclaration.contains(" ")
-                    ) {
-                        // For MicroScript, you might need to handle type declarations differently
-                        // This assumes the executor can handle variable assignment
-                        executor.execute(
-                            variableName +
-                                " = " +
-                                formatValueForAssignment(element)
-                        );
-                    } else {
-                        // Just assign to existing variable
-                        executor.execute(
-                            variableName +
-                                " = " +
-                                formatValueForAssignment(element)
-                        );
-                    }
+                    executor.execute(
+                        variableName + " = " + formatValueForAssignment(element)
+                    );
                 } catch (Exception e) {
                     throw new RuntimeException(
-                        "Error assigning loop variable '" +
-                            variableName +
-                            "': " +
-                            e.getMessage()
+                        "Error assigning loop variable '" + variableName + "': " + e.getMessage()
                     );
                 }
 
-                // Execute the loop body
-                LoopControl loopControl = executeLoopBlock(
-                    lines,
-                    startIndex,
-                    endIndex,
-                    executor
-                );
-
-                // Handle loop control statements
-                if (loopControl == LoopControl.BREAK) {
+                try {
+                    executeLoopBlock(lines, startIndex, endIndex, executor);
+                } catch (Statements.BreakException e) {
                     break;
-                } else if (loopControl == LoopControl.CONTINUE) {
+                } catch (Statements.ContinueException e) {
                     iterations++;
                     continue;
-                } else if (loopControl == LoopControl.RETURN) {
-                    // Return statement encountered, exit the loop
-                    break;
                 }
 
                 iterations++;
             }
+        } catch (Statements.BreakException | Statements.ContinueException e) {
+            // These should have been caught in the inner loop
         } catch (Exception e) {
             throw new RuntimeException(
                 "Error in range-based for loop execution: " + e.getMessage()
@@ -473,7 +412,7 @@ public class ForLoop {
             return chars;
         }
 
-        return null; // Not iterable
+        return null;
     }
 
     /**
@@ -496,7 +435,7 @@ public class ForLoop {
         // Handle C-style declarations: "type name"
         String[] parts = variableDeclaration.trim().split("\\s+");
         if (parts.length >= 2) {
-            return parts[parts.length - 1]; // Return the last part as variable name
+            return parts[parts.length - 1];
         }
 
         // If it's just a name without type
@@ -565,59 +504,37 @@ public class ForLoop {
                     conditionResult = executor.evaluate(condition);
                 } catch (Exception e) {
                     throw new RuntimeException(
-                        "Error evaluating for loop condition '" +
-                            condition +
-                            "': " +
-                            e.getMessage()
+                        "Error evaluating for loop condition '" + condition + "': " + e.getMessage()
                     );
                 }
 
                 boolean conditionValue = isTruthyValue(conditionResult);
-
-                // If condition is false, exit the loop
                 if (!conditionValue) {
                     break;
                 }
 
-                // Execute the loop body
-                LoopControl loopControl = executeLoopBlock(
-                    lines,
-                    startIndex,
-                    endIndex,
-                    executor
-                );
-
-                // Handle loop control statements
-                if (loopControl == LoopControl.BREAK) {
+                try {
+                    executeLoopBlock(lines, startIndex, endIndex, executor);
+                } catch (Statements.BreakException e) {
                     break;
-                } else if (loopControl == LoopControl.CONTINUE) {
-                    // Execute increment and continue to next iteration
+                } catch (Statements.ContinueException e) {
+                    // Execute increment and continue
                     try {
                         executor.execute(increment);
-                    } catch (Exception e) {
+                    } catch (Exception ex) {
                         throw new RuntimeException(
-                            "Error executing for loop increment '" +
-                                increment +
-                                "': " +
-                                e.getMessage()
+                            "Error executing for loop increment '" + increment + "': " + ex.getMessage()
                         );
                     }
                     iterations++;
                     continue;
-                } else if (loopControl == LoopControl.RETURN) {
-                    // Return statement encountered, exit the loop
-                    break;
                 }
 
-                // Execute the increment statement
                 try {
                     executor.execute(increment);
                 } catch (Exception e) {
                     throw new RuntimeException(
-                        "Error executing for loop increment '" +
-                            increment +
-                            "': " +
-                            e.getMessage()
+                        "Error executing for loop increment '" + increment + "': " + e.getMessage()
                     );
                 }
 
@@ -627,12 +544,12 @@ public class ForLoop {
                 // Safety check for infinite loops
                 if (iterations >= MAX_ITERATIONS) {
                     throw new RuntimeException(
-                        "Possible infinite loop detected: exceeded " +
-                            MAX_ITERATIONS +
-                            " iterations"
+                        "Possible infinite loop detected: exceeded " + MAX_ITERATIONS + " iterations"
                     );
                 }
             }
+        } catch (Statements.BreakException | Statements.ContinueException e) {
+            // These should have been caught in the inner loop
         } catch (Exception e) {
             throw new RuntimeException(
                 "Error in for loop execution: " + e.getMessage()
@@ -640,34 +557,15 @@ public class ForLoop {
         }
     }
 
-    /**
-     * Enum to represent loop control flow
-     */
-    private enum LoopControl {
-        CONTINUE, // Continue to next iteration
-        BREAK, // Break out of the loop
-        RETURN, // Return from function
-        NORMAL, // Normal execution
-    }
-
-    /**
-     * Execute a block of code within the loop
-     * @param lines List of code lines
-     * @param startIndex Start index of the block
-     * @param endIndex End index of the block
-     * @param executor The executor to use
-     * @return LoopControl indicating how the loop should proceed
-     */
-    private static LoopControl executeLoopBlock(
+    private static void executeLoopBlock(
         List<String> lines,
         int startIndex,
         int endIndex,
         Executor executor
-    ) {
+    ) throws Statements.BreakException, Statements.ContinueException {
         for (int i = startIndex; i < endIndex; i++) {
             String line = lines.get(i).trim();
 
-            // Skip empty lines and comments
             if (line.isEmpty() || line.startsWith("//")) {
                 continue;
             }
@@ -685,48 +583,34 @@ public class ForLoop {
                 continue;
             }
 
-            // Handle break statements
-            if (line.equals("break")) {
-                return LoopControl.BREAK;
+            // Handle break - throw exception to propagate up
+            if (line.equals("break") || line.equals("break;")) {
+                throw new Statements.BreakException();
             }
 
-            // Handle continue statements
-            if (line.equals("continue")) {
-                return LoopControl.CONTINUE;
+            // Handle continue - throw exception to propagate up
+            if (line.equals("continue") || line.equals("continue;")) {
+                throw new Statements.ContinueException();
             }
 
             // Handle return statements
             if (line.startsWith("return")) {
-                try {
-                    executor.execute(line);
-                } catch (Exception e) {
-                    throw new RuntimeException(
-                        "Error executing return statement in for loop: " +
-                            e.getMessage()
-                    );
-                }
-                return LoopControl.RETURN;
+                executor.execute(line);
+                throw new Statements.BreakException(); // Treat return as break for loop purposes
             }
 
-            // Handle nested if statements
             if (line.startsWith("if")) {
                 try {
-                    int newIndex = Statements.processConditionalStatement(
-                        lines,
-                        i,
-                        executor
-                    );
+                    int newIndex = Statements.processConditionalStatement(lines, i, executor);
                     if (newIndex > i) {
                         i = newIndex - 1;
                     }
-                } catch (Statements.BreakException e) {
-                    return LoopControl.BREAK; // Propagate break up to the loop
-                } catch (Statements.ContinueException e) {
-                    return LoopControl.CONTINUE; // Propagate continue up to the loop
+                } catch (Statements.BreakException | Statements.ContinueException e) {
+                    // Propagate break/continue from nested if
+                    throw e;
                 } catch (Exception e) {
                     throw new RuntimeException(
-                        "Error processing if statement in for loop: " +
-                            e.getMessage()
+                        "Error processing if statement in for loop: " + e.getMessage()
                     );
                 }
                 continue;
@@ -735,21 +619,13 @@ public class ForLoop {
             // Handle nested while loops
             if (line.startsWith("while")) {
                 try {
-                    // Process the nested while loop
-                    int newIndex = WhileLoop.processWhileLoop(
-                        lines,
-                        i,
-                        executor
-                    );
-
-                    // Make sure we advance properly
+                    int newIndex = WhileLoop.processWhileLoop(lines, i, executor);
                     if (newIndex > i) {
-                        i = newIndex - 1; // -1 because the for loop will increment i
+                        i = newIndex - 1;
                     }
                 } catch (Exception e) {
                     throw new RuntimeException(
-                        "Error processing nested while loop in for loop: " +
-                            e.getMessage()
+                        "Error processing nested while loop in for loop: " + e.getMessage()
                     );
                 }
                 continue;
@@ -763,7 +639,7 @@ public class ForLoop {
 
                     // Make sure we advance properly
                     if (newIndex > i) {
-                        i = newIndex - 1; // -1 because the for loop will increment i
+                        i = newIndex - 1;
                     }
                 } catch (Exception e) {
                     throw new RuntimeException(
@@ -778,15 +654,10 @@ public class ForLoop {
                 executor.execute(line);
             } catch (Exception e) {
                 throw new RuntimeException(
-                    "Error executing statement in for loop: '" +
-                        line +
-                        "' - " +
-                        e.getMessage()
+                    "Error executing statement in for loop: '" + line + "' - " + e.getMessage()
                 );
             }
         }
-
-        return LoopControl.NORMAL; // Normal execution completed
     }
 
     /**
@@ -801,25 +672,14 @@ public class ForLoop {
     ) {
         for (int i = startIndex; i < lines.size(); i++) {
             String line = lines.get(i).trim();
-            if (
-                !line.isEmpty() && !line.startsWith("//") && line.contains("{")
-            ) {
+            if (!line.isEmpty() && !line.startsWith("//") && line.contains("{")) {
                 return i;
             }
         }
         return -1;
     }
 
-    /**
-     * Find the matching closing brace for an opening brace
-     * @param lines List of code lines
-     * @param openBraceIndex Index of the line with the opening brace
-     * @return Index of the line with the matching closing brace, or -1 if not found
-     */
-    private static int findMatchingClosingBrace(
-        List<String> lines,
-        int openBraceIndex
-    ) {
+    private static int findMatchingClosingBrace(List<String> lines, int openBraceIndex) {
         int braceCount = 0;
         boolean foundOpenBrace = false;
 
@@ -847,13 +707,13 @@ public class ForLoop {
                 } else if (c == '}') {
                     braceCount--;
                     if (foundOpenBrace && braceCount == 0) {
-                        return i; // Found matching closing brace
+                        return i;
                     }
                 }
             }
         }
 
-        return -1; // No matching closing brace found
+        return -1;
     }
 
     /**
@@ -873,7 +733,7 @@ public class ForLoop {
         if (value instanceof Number) {
             // Consider non-zero numbers as true
             double numValue = ((Number) value).doubleValue();
-            return Math.abs(numValue) > 0.0001; // Account for floating point imprecision
+            return Math.abs(numValue) > 0.0001;
         }
 
         if (value instanceof String) {
