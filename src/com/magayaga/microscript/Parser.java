@@ -82,6 +82,13 @@ public class Parser {
                 int afterLoop = Loop.processLoop(lines, i, executor);
                 i = afterLoop; // Skip all lines in the loop
             }
+            
+            // Handle struct definition
+            else if (line.startsWith("struct ")) {
+                int closingBraceIndex = findClosingBrace(i);
+                parseStruct(i, closingBraceIndex);
+                i = closingBraceIndex + 1;
+            }
 
             else {
                 // Execute top-level commands
@@ -362,8 +369,8 @@ public class Parser {
             return;
         }
 
-        // Variable or boolean declaration
-        if (line.startsWith("var ") || line.startsWith("bool ")) {
+        // Variable or boolean declaration (including letexpr for struct instances)
+        if (line.startsWith("var ") || line.startsWith("bool ") || line.startsWith("letexpr ")) {
             Executor executor = new Executor(environment);
             executor.execute(line);
             return;
@@ -463,6 +470,26 @@ public class Parser {
             throw new RuntimeException("Invalid property declaration: " + declaration);
         }
     }
+
+    /**
+     * Parse a struct definition
+     * @param start The index of the line with the struct keyword
+     * @param end The index of the closing brace
+     */
+    private void parseStruct(int start, int end) {
+        // Collect the struct definition lines
+        List<String> structLines = new ArrayList<>();
+        for (int i = start; i <= end; i++) {
+            structLines.add(lines.get(i));
+        }
+        
+        // Use Struct's parsing method
+        Struct structDef = Struct.parseStructDefinition(structLines, 0);
+        
+        // Register the struct in the environment
+        environment.defineStruct(structDef);
+    }
+
 
     /**
      * Creates a unary lambda function from a string expression

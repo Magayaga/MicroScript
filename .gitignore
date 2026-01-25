@@ -124,3 +124,6 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# Manifest file
+META-INF/MANIFEST.MF

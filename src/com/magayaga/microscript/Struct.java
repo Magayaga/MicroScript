@@ -138,11 +138,11 @@ public class Struct {
             case "Int32":
                 return value instanceof Integer;
             case "Int64":
-                return value instanceof Long;
+                return value instanceof Long || value instanceof Integer; // Allow integer to long conversion
             case "Float32":
                 return value instanceof Float;
             case "Float64":
-                return value instanceof Double || value instanceof Integer; // Allow integer to double conversion
+                return value instanceof Double || value instanceof Integer || value instanceof Float; // Allow numeric conversions
             case "Char":
                 return value instanceof Character;
             case "bool":
@@ -159,6 +159,7 @@ public class Struct {
     private String getTypeName(Object value) {
         if (value instanceof String) return "String";
         if (value instanceof Integer) return "Int32";
+        if (value instanceof Long) return "Int64";
         if (value instanceof Float) return "Float32";
         if (value instanceof Double) return "Float64";
         if (value instanceof Character) return "Char";

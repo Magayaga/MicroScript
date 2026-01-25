@@ -341,6 +341,49 @@ public class Executor {
                     throw new RuntimeException("Syntax error in boolean declaration: " + expression);
                 }
             }
+            
+            else if (expression.startsWith("letexpr ")) {
+                // Handle struct instance declaration: letexpr varName: StructName = {value1, value2, ...};
+                String declaration = expression.substring(8).trim();
+                int equalsIndex = declaration.indexOf('=');
+                if (equalsIndex != -1) {
+                    String varDeclaration = declaration.substring(0, equalsIndex).trim();
+                    String[] parts = varDeclaration.split(":");
+                    if (parts.length != 2) {
+                        throw new RuntimeException("Syntax error in struct instance declaration: " + expression);
+                    }
+                    String varName = parts[0].trim();
+                    String structName = parts[1].trim();
+                    String valueExpression = declaration.substring(equalsIndex + 1).trim().replace(";", "");
+                    
+                    // Get the struct definition
+                    Struct structDef = environment.getStruct(structName);
+                    if (structDef == null) {
+                        throw new RuntimeException("Struct '" + structName + "' is not defined");
+                    }
+                    
+                    // Parse the initialization values: {value1, value2, ...}
+                    if (!valueExpression.startsWith("{") || !valueExpression.endsWith("}")) {
+                        throw new RuntimeException("Struct initialization must use {} syntax: " + valueExpression);
+                    }
+                    
+                    String values = valueExpression.substring(1, valueExpression.length() - 1).trim();
+                    List<Object> initValues = new ArrayList<>();
+                    if (!values.isEmpty()) {
+                        for (String val : splitArguments(values)) {
+                            initValues.add(evaluate(val.trim()));
+                        }
+                    }
+                    
+                    // Create the struct instance
+                    Struct instance = structDef.createInstance(initValues);
+                    environment.setVariable(varName, instance);
+                }
+                
+                else {
+                    throw new RuntimeException("Syntax error in struct instance declaration: " + expression);
+                }
+            }
 
             else if (expression.startsWith("list ")) {
                 // Handle list declaration
@@ -845,6 +888,21 @@ public class Executor {
             double arg = Double.parseDouble(argStr);
             Import.FunctionInterface sqrtFunc = (Import.FunctionInterface) environment.getVariable("math::sqrt");
             return sqrtFunc.call(new Object[]{arg});
+        }
+        
+        // Check for member access (struct field access): varName.fieldName
+        if (expression.contains(".") && !expression.startsWith("console.") && !expression.startsWith("io::") && !expression.startsWith("math::")) {
+            String[] parts = expression.split("\\.", 2);
+            if (parts.length == 2) {
+                String varName = parts[0].trim();
+                String fieldName = parts[1].trim();
+                
+                Object obj = environment.getVariable(varName);
+                if (obj instanceof Struct) {
+                    Struct structInstance = (Struct) obj;
+                    return structInstance.getField(fieldName);
+                }
+            }
         }
 
         // Check if the expression is a variable
