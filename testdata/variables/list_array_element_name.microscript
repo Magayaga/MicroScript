@@ -1,0 +1,9 @@
+// List array element name using MicroScript
+// Copyright (c) 2026 Cyril John Magayaga
+
+function main() {
+    list fruits = ["apple", "banana", "melon", "mango", "berry", "dragonfruit"];
+    console.write("The first fruit is: {}", fruits[5]);
+}
+
+main();

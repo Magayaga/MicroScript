@@ -1,0 +1,9 @@
+// List array element number using MicroScript
+// Copyright (c) 2026 Cyril John Magayaga
+
+function main() {
+    list numbers = [1, 2, 3, 4, 5];
+    console.write("The first number is: {}", numbers[0]);
+}
+
+main();

@@ -394,7 +394,16 @@ public class Executor {
                     String valueExpression = declaration.substring(equalsIndex + 1).trim().replace(";", "");
                     if (valueExpression.startsWith("[") && valueExpression.endsWith("]")) {
                         String elements = valueExpression.substring(1, valueExpression.length() - 1);
-                        ListVariable list = new ListVariable(splitByCommaWithTrim(elements).toArray(new String[0]));
+                        List<String> elementStrings = splitByCommaWithTrim(elements);
+                        ListVariable list = new ListVariable();
+                        
+                        for (String elementStr : elementStrings) {
+                            if (!elementStr.isEmpty()) {
+                                Object elementValue = evaluate(elementStr);
+                                list.add(elementValue);
+                            }
+                        }
+                        
                         environment.setVariable(listName, list);
                     }
                     

@@ -1,6 +1,6 @@
 /**
  * MicroScript — The programming language
- * Copyright (c) 2024-2025 Cyril John Magayaga
+ * Copyright (c) 2024-2026 Cyril John Magayaga
  * 
  * It was originally written in Java programming language.
  */
@@ -17,5 +17,15 @@ public class ListVariable extends ArrayList<Object> {
         for (String element : elements) {
             this.add(element.trim());
         }
+    }
+    
+    public ListVariable(Object[] elements) {
+        for (Object element : elements) {
+            this.add(element);
+        }
+    }
+    
+    public Object get(int index) {
+        return super.get(index);
     }
 }

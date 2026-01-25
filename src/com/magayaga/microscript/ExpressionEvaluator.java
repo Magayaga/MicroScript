@@ -1,6 +1,6 @@
 /**
  * MicroScript — The programming language
- * Copyright (c) 2024-2025 Cyril John Magayaga
+ * Copyright (c) 2024-2026 Cyril John Magayaga
  * 
  * It was originally written in Java programming language.
  */
@@ -857,6 +857,41 @@ public class ExpressionEvaluator {
             else {
                 Object varValue = environment.getVariable(func);
                 if (varValue != null) {
+                    // Check for array access syntax: variable[index]
+                    skipWhitespace();
+                    if (ch == '[') {
+                        if (!(varValue instanceof ListVariable)) {
+                            throw new RuntimeException("Cannot use array access on non-list variable: " + func);
+                        }
+                        
+                        nextChar(); // consume [
+                        skipWhitespace();
+                        
+                        // Parse the index expression
+                        Object indexValue = parseAssignment();
+                        
+                        if (!(indexValue instanceof Number)) {
+                            throw new RuntimeException("Array index must be a number, got: " + indexValue);
+                        }
+                        
+                        skipWhitespace();
+                        if (ch != ']') {
+                            throw new RuntimeException("Missing ']' in array access at position " + pos);
+                        }
+                        nextChar(); // consume ]
+                        skipWhitespace();
+                        
+                        // Get the element from the list
+                        ListVariable list = (ListVariable) varValue;
+                        int index = ((Number) indexValue).intValue();
+                        
+                        if (index < 0 || index >= list.size()) {
+                            throw new RuntimeException("Array index out of bounds: " + index + " (size: " + list.size() + ")");
+                        }
+                        
+                        return list.get(index);
+                    }
+                    
                     return varValue;
                 } else {
                     throw new RuntimeException("Undefined variable: " + func);
