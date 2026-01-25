@@ -147,6 +147,7 @@ main();
 | `for` | Mojo, C | When you know exactly how many times you want to loop through a block of code, use the for loop instead of a while loop.
 | `switch` | Rust, C | Pattern matching via the `switch` keyword, which can be used like Rust's `match` keyword. 
 | `break`, `continue` | Java, *All | `break` keyword terminates the loop and `continue` keyword skips the current iteration of the loop and moves on to the next.
+| `struct` | Swift | A `struct` is a value type used to store variables of different data types. For example, `struct struct_name {...}`.
 
 ## Copyright
 
