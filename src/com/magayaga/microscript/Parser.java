@@ -26,12 +26,20 @@ public class Parser {
         this.lines = lines;
         this.environment = new Environment();
     }
+    
+    public Parser(List<String> lines, Environment environment) {
+        this.lines = lines;
+        this.environment = environment;
+    }
 
     public void parse() {
         int i = 0;
         boolean hasCStyleMain = false;
+        System.out.println("DEBUG: Starting parse, total lines: " + lines.size());
         while (i < lines.size()) {
             String line = lines.get(i).trim();
+            System.out.println("DEBUG: Line " + i + ": " + line);
+            
             // Skip comments and empty lines
             if (line.startsWith("//") || line.isEmpty()) {
                 i++;
@@ -46,6 +54,23 @@ public class Parser {
                 // Skip the line with the closing */ as well
                 if (i < lines.size()) i++;
                 continue;
+            }
+
+            // Handle @__globalfn__ block
+            else if (line.startsWith("@__globalfn__")) {
+                System.out.println("DEBUG: Found @__globalfn__ block");
+                // Find the opening brace
+                int braceLine = i + 1;
+                while (braceLine < lines.size() && !lines.get(braceLine).trim().equals("{")) {
+                    braceLine++;
+                }
+                if (braceLine >= lines.size()) {
+                    throw new RuntimeException("Missing opening brace for @__globalfn__ block");
+                }
+                
+                int closingBraceIndex = findClosingBrace(braceLine);
+                parseGlobalFunctionBlock(i, closingBraceIndex);
+                i = closingBraceIndex + 1;
             }
 
             // C-style function
@@ -317,6 +342,13 @@ public class Parser {
             return;
         }
 
+        // Handle @map statements
+        if (line.startsWith("@map")) {
+            Executor executor = new Executor(environment);
+            parseMapOperation(line, executor);
+            return;
+        }
+
         // Regex to match console.write statements
         Pattern pattern = Pattern.compile("console.write\\((.*)\\);");
         Matcher matcher = pattern.matcher(line);
@@ -524,5 +556,70 @@ public class Parser {
             localEnv.setVariable("it", arg2);   // Second argument is current item
             return new Executor(localEnv).evaluate(lambda);
         };
+    }
+    
+    /**
+     * Parse @__globalfn__ block containing higher-order function operations
+     */
+    public void parseGlobalFunctionBlock(int start, int end) {
+        System.out.println("DEBUG: Parsing @__globalfn__ block from " + start + " to " + end);
+        Executor executor = new Executor(environment);
+        
+        for (int i = start + 1; i < end; i++) {
+            String line = lines.get(i).trim();
+            System.out.println("DEBUG: Processing line: " + line);
+            
+            // Skip comments and empty lines
+            if (line.startsWith("//") || line.isEmpty()) {
+                continue;
+            }
+            
+            // Handle @map operations
+            if (line.startsWith("@map")) {
+                System.out.println("DEBUG: Found @map operation");
+                parseMapOperation(line, executor);
+            }
+            // Add other higher-order function operations here
+            else {
+                throw new RuntimeException("Unsupported operation in @__globalfn__ block: " + line);
+            }
+        }
+        System.out.println("DEBUG: Finished parsing @__globalfn__ block");
+    }
+    
+    /**
+     * Parse @map operation: @map => (operation) [list]
+     */
+    public void parseMapOperation(String line, Executor executor) {
+        // Pattern: @map => (operation) [list]
+        Pattern mapPattern = Pattern.compile("@map\\s*=>\\s*(\\([^)]+\\))\\s*\\[([^\\]]+)\\]");
+        Matcher matcher = mapPattern.matcher(line);
+        
+        if (!matcher.find()) {
+            throw new RuntimeException("Invalid @map syntax: " + line);
+        }
+        
+        String operation = matcher.group(1).trim();  // e.g., (*2)
+        String listExpression = matcher.group(2).trim();  // e.g., 1, 2, 3, 4
+        
+        // Parse the list elements
+        List<Object> list = new ArrayList<>();
+        String[] elements = listExpression.split("\\s*,\\s*");
+        
+        for (String element : elements) {
+            if (!element.trim().isEmpty()) {
+                Object value = executor.evaluate(element.trim());
+                list.add(value);
+            }
+        }
+        
+        // Execute the map operation
+        List<Object> result = FunctionHigherOrder.processMap(operation, list);
+        
+        // Store the result in a temporary variable for potential use
+        environment.setVariable("_last_map_result", result);
+        
+        // Automatically display the result
+        System.out.println("Map result " + operation + ": " + result);
     }
 }

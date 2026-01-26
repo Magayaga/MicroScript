@@ -728,6 +728,56 @@ public class Executor {
                         continue;
                     }
 
+                    // Handle @map statements
+                    if (line.startsWith("@map")) {
+                        // Use the Parser to handle the @map operation
+                        Parser parser = new Parser(new ArrayList<>(), localEnv);
+                        parser.parseMapOperation(line, new Executor(localEnv));
+                        i++;
+                        continue;
+                    }
+
+                    // Handle @__globalfn__ blocks
+                    if (line.startsWith("@__globalfn__")) {
+                        // Find the closing brace for the @__globalfn__ block
+                        int endIndex = i + 1;
+                        int braceLevel = 1;
+                        
+                        while (endIndex < body.size() && braceLevel > 0) {
+                            String bodyLine = body.get(endIndex).trim();
+                            if (bodyLine.equals("{")) {
+                                braceLevel++;
+                            } else if (bodyLine.equals("}")) {
+                                braceLevel--;
+                                if (braceLevel == 0) {
+                                    break;
+                                }
+                            } else if (bodyLine.contains("{")) {
+                                braceLevel += bodyLine.chars().filter(ch -> ch == '{').count();
+                            }
+                            if (bodyLine.contains("}") && !bodyLine.equals("}")) {
+                                braceLevel -= bodyLine.chars().filter(ch -> ch == '}').count();
+                            }
+                            endIndex++;
+                        }
+                        
+                        // Process the @__globalfn__ block
+                        List<String> globalFnBlock = new ArrayList<>();
+                        for (int j = i + 1; j < endIndex; j++) {
+                            String blockLine = body.get(j).trim();
+                            if (!blockLine.equals("}") && !blockLine.isEmpty()) {
+                                globalFnBlock.add(blockLine);
+                            }
+                        }
+                        
+                        // Create a parser to handle the @__globalfn__ block with local environment
+                        Parser parser = new Parser(globalFnBlock, localEnv);
+                        parser.parseGlobalFunctionBlock(0, globalFnBlock.size());
+                        
+                        i = endIndex; // Skip to after the block
+                        continue;
+                    }
+
                     // Handle switch statements
                     if (line.startsWith("switch")) {
                         // Process the switch statement

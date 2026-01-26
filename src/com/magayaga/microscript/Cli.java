@@ -59,7 +59,20 @@ public class Cli {
         
         else if (args[0].equals("run")) {
             System.out.println(BLUE + "Running MicroScript file..." + RESET);
-            // You can delegate to MicroScript.main(args) here if needed
+            if (args.length < 2) {
+                System.out.println("Error: No file specified");
+                printUsage();
+                return;
+            }
+            try {
+                // Delegate to MicroScript to run the file
+                String[] microScriptArgs = new String[args.length];
+                microScriptArgs[0] = "run";
+                System.arraycopy(args, 1, microScriptArgs, 1, microScriptArgs.length - 1);
+                MicroScript.main(microScriptArgs);
+            } catch (Exception e) {
+                System.out.println("Error running file: " + e.getMessage());
+            }
         }
         
         else {

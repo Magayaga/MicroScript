@@ -1,7 +1,0 @@
-function main() {
-    @__globalfn__ {
-       map => (*2) [1, 2, 3, 4]
-    }
-}
-
-main();
