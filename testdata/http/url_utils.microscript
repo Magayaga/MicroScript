@@ -1,0 +1,22 @@
+// MicroScript HTTP Server Example - URL Utilities
+// This example demonstrates URL encoding and decoding
+
+import http
+
+// URL encoding example
+var original = "Hello World & MicroScript!";
+var encoded = http::urlEncode(original);
+console.write("Original: ");
+console.write(original);
+console.write("Encoded: ");
+console.write(encoded);
+
+// URL decoding example
+var decoded = http::urlDecode(encoded);
+console.write("Decoded: ");
+console.write(decoded);
+
+// Generate UUID
+var uuid = http::generateUuid();
+console.write("Generated UUID: ");
+console.write(uuid);

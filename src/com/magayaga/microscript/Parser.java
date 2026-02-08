@@ -35,10 +35,8 @@ public class Parser {
     public void parse() {
         int i = 0;
         boolean hasCStyleMain = false;
-        System.out.println("DEBUG: Starting parse, total lines: " + lines.size());
         while (i < lines.size()) {
             String line = lines.get(i).trim();
-            System.out.println("DEBUG: Line " + i + ": " + line);
             
             // Skip comments and empty lines
             if (line.startsWith("//") || line.isEmpty()) {
@@ -58,7 +56,6 @@ public class Parser {
 
             // Handle @__globalfn__ block
             else if (line.startsWith("@__globalfn__")) {
-                System.out.println("DEBUG: Found @__globalfn__ block");
                 // Find the opening brace
                 int braceLine = i + 1;
                 while (braceLine < lines.size() && !lines.get(braceLine).trim().equals("{")) {
@@ -562,12 +559,10 @@ public class Parser {
      * Parse @__globalfn__ block containing higher-order function operations
      */
     public void parseGlobalFunctionBlock(int start, int end) {
-        System.out.println("DEBUG: Parsing @__globalfn__ block from " + start + " to " + end);
         Executor executor = new Executor(environment);
         
         for (int i = start + 1; i < end; i++) {
             String line = lines.get(i).trim();
-            System.out.println("DEBUG: Processing line: " + line);
             
             // Skip comments and empty lines
             if (line.startsWith("//") || line.isEmpty()) {
@@ -576,7 +571,6 @@ public class Parser {
             
             // Handle @map operations
             if (line.startsWith("@map")) {
-                System.out.println("DEBUG: Found @map operation");
                 parseMapOperation(line, executor);
             }
             // Add other higher-order function operations here
@@ -584,7 +578,6 @@ public class Parser {
                 throw new RuntimeException("Unsupported operation in @__globalfn__ block: " + line);
             }
         }
-        System.out.println("DEBUG: Finished parsing @__globalfn__ block");
     }
     
     /**

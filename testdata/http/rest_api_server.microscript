@@ -1,0 +1,20 @@
+// MicroScript HTTP Server Example - REST API Server
+// This example demonstrates creating a REST API server with multiple routes
+
+import http
+
+// Create server on port 3000
+
+// Add routes for a simple REST API
+http::addRoute(http::createServer(3000), "GET", "/api/users", "getUsersHandler");
+http::addRoute(http::createServer(3000), "POST", "/api/users", "createUserHandler");
+http::addRoute(http::createServer(3000), "GET", "/api/health", "healthCheckHandler");
+
+// Add middleware for logging
+http::useMiddleware(http::createServer(3000), "loggerMiddleware");
+
+console.write("REST API server started on port 3000");
+console.write("Available endpoints:");
+console.write("  GET  /api/users  - Get all users");
+console.write("  POST /api/users  - Create a user");
+console.write("  GET  /api/health - Health check");

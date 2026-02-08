@@ -1,6 +1,6 @@
 /**
  * MicroScript — The programming language
- * Copyright (c) 2025 Cyril John Magayaga
+ * Copyright (c) 2025-2026 Cyril John Magayaga
  * 
  * It was originally written in Java programming language.
  */
@@ -105,8 +105,14 @@ public class Import {
     public static class HttpModule implements Module {
         @Override
         public void register(Environment env) {
+            // Check if library is loaded
+            env.setVariable("http::isLibraryLoaded", (Import.FunctionInterface) (args) -> {
+                return NativeHttp.isLibraryLoaded();
+            });
+            
             // Server management
             env.setVariable("http::createServer", (Import.FunctionInterface) (args) -> {
+                NativeHttp.checkLibrary();
                 int port = ((Number) args[0]).intValue();
                 return NativeHttp.createServer(port);
             });

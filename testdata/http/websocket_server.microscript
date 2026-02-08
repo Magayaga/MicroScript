@@ -1,0 +1,24 @@
+// MicroScript HTTP Server Example - WebSocket Server
+// This example demonstrates WebSocket functionality
+
+import http
+
+// Create HTTP server on port 8081
+var server = http::createServer(8081);
+
+// Create WebSocket endpoint
+var wsEndpoint = http::createWebSocketEndpoint(server, "/ws");
+
+console.write("WebSocket server created");
+console.write("WebSocket endpoint: ws://localhost:8081/ws");
+
+// Example of broadcasting a message to all connected clients
+// http::broadcastWebSocketMessage(wsEndpoint, "Hello from MicroScript!");
+
+// Example of sending message to specific client
+// http::sendWebSocketMessage(wsEndpoint, clientId, "Personal message");
+
+// Example of closing a connection
+// http::closeWebSocketConnection(wsEndpoint, clientId);
+
+console.write("WebSocket server is ready for connections");

@@ -1,18 +1,19 @@
-/**
- * MicroScript — The programming language
- * Copyright (c) 2025 Cyril John Magayaga
+/* MicroScript — The programming language
+ * Copyright (c) 2025-2026 Cyril John Magayaga
  *
  * Go implementation of HTTP server functionality
- * It was originally written in Go programming language
+ * Exports C functions via CGO for JNI integration
  */
 package main
 
 import (
 	"C"
+	"context"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
@@ -103,25 +104,29 @@ func createServer(port int) int {
 //export stopServer
 func stopServer(serverHandle int) {
 	globalMu.Lock()
-	defer globalMu.Unlock()
-
 	server, exists := servers[serverHandle]
 	if !exists {
+		globalMu.Unlock()
 		return
 	}
+	globalMu.Unlock()
 
 	server.mu.Lock()
 	defer server.mu.Unlock()
 
 	if server.isRunning {
-		ctx, cancel := C.createContext(2 * time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		server.server.Shutdown(ctx)
+		if err := server.server.Shutdown(ctx); err != nil {
+			log.Printf("HTTP server shutdown error: %v", err)
+		}
 		server.isRunning = false
 	}
 
+	globalMu.Lock()
 	delete(servers, serverHandle)
+	globalMu.Unlock()
 }
 
 //export isRunning
@@ -415,16 +420,19 @@ func useMiddleware(serverHandle int, middlewareName *C.char) {
 //
 //export urlEncode
 func urlEncode(input *C.char) *C.char {
-	// Implement URL encoding
-	// For simplicity, this is a placeholder
-	return input
+	inputStr := C.GoString(input)
+	encoded := url.QueryEscape(inputStr)
+	return C.CString(encoded)
 }
 
 //export urlDecode
 func urlDecode(input *C.char) *C.char {
-	// Implement URL decoding
-	// For simplicity, this is a placeholder
-	return input
+	inputStr := C.GoString(input)
+	decoded, err := url.QueryUnescape(inputStr)
+	if err != nil {
+		return C.CString(inputStr) // Return original on error
+	}
+	return C.CString(decoded)
 }
 
 //export generateUuid

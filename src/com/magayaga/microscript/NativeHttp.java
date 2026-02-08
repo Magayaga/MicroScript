@@ -1,14 +1,33 @@
 /**
  * MicroScript — The programming language
- * Copyright (c) 2025 Cyril John Magayaga
+ * Copyright (c) 2025-2026 Cyril John Magayaga
  * 
- * It was originally written in Java programming language.
+ * Native HTTP server bindings using Go via JNI/CGO.
  */
 package com.magayaga.microscript;
 
 public class NativeHttp {
+    private static boolean libraryLoaded = false;
+    private static String loadError = null;
+    
     static {
-        System.loadLibrary("httpserver"); // Loads httpserver.dll or libhttpserver.so
+        try {
+            System.loadLibrary("httpserver"); // Loads httpserver.dll or libhttpserver.so
+            libraryLoaded = true;
+        } catch (UnsatisfiedLinkError e) {
+            loadError = e.getMessage();
+            System.err.println("Warning: HTTP server library not loaded: " + loadError);
+        }
+    }
+    
+    public static boolean isLibraryLoaded() {
+        return libraryLoaded;
+    }
+    
+    public static void checkLibrary() {
+        if (!libraryLoaded) {
+            throw new RuntimeException("HTTP server library not available: " + loadError);
+        }
     }
     
     // HTTP Server core functions

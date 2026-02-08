@@ -1,0 +1,17 @@
+// MicroScript HTTP Server Example - Basic Server
+// This example demonstrates creating a simple HTTP server
+
+import http
+
+// Create server on port 8080
+
+// Add a GET route for the homepage
+http::addRoute(http::createServer(8080), "GET", "/", "homeHandler");
+
+// Check if server is running
+console.write("Server running: ");
+console.write(http::isRunning(http::createServer(8080)));
+
+// Generate a unique request ID
+console.write("Request UUID: ");
+console.write(http::generateUuid());
