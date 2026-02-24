@@ -148,10 +148,11 @@ main();
 | `switch` | Rust, C | Pattern matching via the `switch` keyword, which can be used like Rust's `match` keyword. 
 | `break`, `continue` | Java, *All | `break` keyword terminates the loop and `continue` keyword skips the current iteration of the loop and moves on to the next.
 | `struct` | Swift | A `struct` is a value type used to store variables of different data types. For example, `struct struct_name {...}`.
-| `namespace` | C++, TypeScript | Later. 
+| `namespace` | C++, TypeScript | It is used to group related code into a single named scope to prevent naming conflicts and organize the codebase.
 
 ## Copyright
 
 Copyright (c) 2024-2026 [Cyril John Magayaga](https://github.com/magayaga). Licensed under the [MIT license](LICENSE).
+
 
 
