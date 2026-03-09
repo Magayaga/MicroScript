@@ -1,0 +1,11 @@
+namespace Geometry {
+    var pi: Float64 = 3.14159;
+
+    function circleArea(radius: Float64) -> Float64 {
+        return Geometry::pi * radius * radius;
+    }
+}
+
+fn main() {
+    console.write(Geometry::circleArea(2.0));
+}

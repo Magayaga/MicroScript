@@ -1,0 +1,29 @@
+function asFloat64(number: Int32) -> Float64 {
+    return number;
+}
+
+function asFloat32(number: Int32) -> Float32 {
+    return number;
+}
+
+function asInt64(number: Int32) -> Int64 {
+    return number;
+}
+
+fn main() {
+    var text: String = "micro";
+    var num32: Int32 = 7;
+    var num64: Int64 = 7;
+    var decimal64: Float64 = 7;
+    var decimal32: Float32 = 7;
+
+    console.write(text);
+    console.write(num32);
+    console.write(num64);
+    console.write(decimal64);
+    console.write(decimal32);
+
+    console.write(asFloat64(3));
+    console.write(asFloat32(3));
+    console.write(asInt64(3));
+}

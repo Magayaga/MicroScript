@@ -271,48 +271,29 @@ public class Executor {
                 int equalsIndex = declaration.indexOf('=');
                 if (equalsIndex != -1) {
                     String varDeclaration = declaration.substring(0, equalsIndex).trim();
-                    String[] parts = varDeclaration.split(":");
-                    if (parts.length != 2) {
+                    int typeSeparator = varDeclaration.lastIndexOf(':');
+                    if (typeSeparator == -1) {
                         throw new RuntimeException("Syntax error in variable declaration: " + expression);
                     }
-                    String varName = parts[0].trim();
-                    String typeAnnotation = parts[1].trim();
+                    String varName = varDeclaration.substring(0, typeSeparator).trim();
+                    String typeAnnotation = varDeclaration.substring(typeSeparator + 1).trim();
                     String valueExpression = declaration.substring(equalsIndex + 1).trim().replace(";", "");
-                    Object value = evaluate(valueExpression);
+                    Object value;
 
-                    // Ensure the value matches the type annotation
-                    switch (typeAnnotation) {
-                        case "String":
-                            if (!(value instanceof String)) {
-                                throw new RuntimeException("Type error: " + valueExpression + " is not a String.");
-                            }
-                            break;
-                        case "Int32":
-                        case "Int64":
-                            if (!(value instanceof Integer)) {
-                                throw new RuntimeException("Type error: " + valueExpression + " is not an Integer.");
-                            }
-                            break;
-                        case "Float32":
-                            if (!(value instanceof Float)) {
-                                throw new RuntimeException("Type error: " + valueExpression + " is not a Float32.");
-                            }
-                            break;
-                        case "Float64":
-                            if (!(value instanceof Double)) {
-                                throw new RuntimeException("Type error: " + valueExpression + " is not a Float64.");
-                            }
-                            break;
-                        case "Char":
-                            if (!(value instanceof Character)) {
-                                throw new RuntimeException("Type error: " + valueExpression + " is not a Character.");
-                            }
-                            break;
-                        default:
-                            throw new RuntimeException("Unknown type annotation: " + typeAnnotation);
+                    // Support struct initialization: var person: Person = {"Jane", 35.0};
+                    Struct structDefinition = environment.getStruct(typeAnnotation);
+                    if (structDefinition != null && valueExpression.startsWith("{") && valueExpression.endsWith("}")) {
+                        value = createStructInstance(structDefinition, valueExpression);
+                    } else {
+                        value = evaluate(valueExpression);
                     }
 
-                    environment.setVariable(varName, value);
+                    // Ensure the value matches the type annotation
+                    if (!isValueCompatibleWithType(value, typeAnnotation)) {
+                        throw new RuntimeException("Type error: " + valueExpression + " cannot be assigned to " + typeAnnotation + ".");
+                    }
+
+                    environment.setVariable(varName, coerceValueForType(value, typeAnnotation));
                 }
                 
                 else {
@@ -348,35 +329,20 @@ public class Executor {
                 int equalsIndex = declaration.indexOf('=');
                 if (equalsIndex != -1) {
                     String varDeclaration = declaration.substring(0, equalsIndex).trim();
-                    String[] parts = varDeclaration.split(":");
-                    if (parts.length != 2) {
+                    int typeSeparator = varDeclaration.lastIndexOf(':');
+                    if (typeSeparator == -1) {
                         throw new RuntimeException("Syntax error in struct instance declaration: " + expression);
                     }
-                    String varName = parts[0].trim();
-                    String structName = parts[1].trim();
+                    String varName = varDeclaration.substring(0, typeSeparator).trim();
+                    String structName = varDeclaration.substring(typeSeparator + 1).trim();
                     String valueExpression = declaration.substring(equalsIndex + 1).trim().replace(";", "");
-                    
-                    // Get the struct definition
+
                     Struct structDef = environment.getStruct(structName);
                     if (structDef == null) {
                         throw new RuntimeException("Struct '" + structName + "' is not defined");
                     }
-                    
-                    // Parse the initialization values: {value1, value2, ...}
-                    if (!valueExpression.startsWith("{") || !valueExpression.endsWith("}")) {
-                        throw new RuntimeException("Struct initialization must use {} syntax: " + valueExpression);
-                    }
-                    
-                    String values = valueExpression.substring(1, valueExpression.length() - 1).trim();
-                    List<Object> initValues = new ArrayList<>();
-                    if (!values.isEmpty()) {
-                        for (String val : splitArguments(values)) {
-                            initValues.add(evaluate(val.trim()));
-                        }
-                    }
-                    
-                    // Create the struct instance
-                    Struct instance = structDef.createInstance(initValues);
+
+                    Struct instance = createStructInstance(structDef, valueExpression);
                     environment.setVariable(varName, instance);
                 }
                 
@@ -447,6 +413,117 @@ public class Executor {
         catch (Exception e) {
             System.out.println("Evaluation error: " + e.getMessage());
         }
+    }
+
+
+    private boolean isValueCompatibleWithType(Object value, String expectedType) {
+        switch (expectedType) {
+            case "String":
+                return value instanceof String;
+            case "Int32":
+                return value instanceof Integer || isWholeNumber(value, Integer.MIN_VALUE, Integer.MAX_VALUE);
+            case "Int64":
+                return value instanceof Long || value instanceof Integer || isWholeNumber(value, Long.MIN_VALUE, Long.MAX_VALUE);
+            case "Float32":
+                return value instanceof Float || value instanceof Double || value instanceof Integer || value instanceof Long;
+            case "Float64":
+                return value instanceof Double || value instanceof Float || value instanceof Integer || value instanceof Long;
+            case "Char":
+                return value instanceof Character;
+            case "bool":
+                return value instanceof Boolean;
+            case "void":
+                return value == null;
+            default:
+                Struct structDef = environment.getStruct(expectedType);
+                if (structDef == null) {
+                    throw new RuntimeException("Unknown type annotation: " + expectedType);
+                }
+                if (!(value instanceof Struct)) {
+                    return false;
+                }
+                Struct structValue = (Struct) value;
+                return expectedType.equals(structValue.getName());
+        }
+    }
+
+    private Object coerceValueForType(Object value, String expectedType) {
+        switch (expectedType) {
+            case "Int32":
+                if (value instanceof Double) {
+                    return ((Double) value).intValue();
+                }
+                if (value instanceof Float) {
+                    return ((Float) value).intValue();
+                }
+                if (value instanceof Long) {
+                    return ((Long) value).intValue();
+                }
+                return value;
+            case "Int64":
+                if (value instanceof Integer) {
+                    return ((Integer) value).longValue();
+                }
+                if (value instanceof Double) {
+                    return ((Double) value).longValue();
+                }
+                if (value instanceof Float) {
+                    return ((Float) value).longValue();
+                }
+                return value;
+            case "Float32":
+                if (value instanceof Integer) {
+                    return ((Integer) value).floatValue();
+                }
+                if (value instanceof Long) {
+                    return ((Long) value).floatValue();
+                }
+                if (value instanceof Double) {
+                    return ((Double) value).floatValue();
+                }
+                return value;
+            case "Float64":
+                if (value instanceof Integer) {
+                    return ((Integer) value).doubleValue();
+                }
+                if (value instanceof Long) {
+                    return ((Long) value).doubleValue();
+                }
+                if (value instanceof Float) {
+                    return ((Float) value).doubleValue();
+                }
+                return value;
+            default:
+                return value;
+        }
+    }
+
+    private boolean isWholeNumber(Object value, double min, double max) {
+        if (value instanceof Double) {
+            double d = (Double) value;
+            return d >= min && d <= max && d == Math.floor(d);
+        }
+        if (value instanceof Float) {
+            float f = (Float) value;
+            return f >= min && f <= max && f == Math.floor(f);
+        }
+        return false;
+    }
+
+    private Struct createStructInstance(Struct structDef, String valueExpression) {
+        if (!valueExpression.startsWith("{") || !valueExpression.endsWith("}")) {
+            throw new RuntimeException("Struct initialization must use {} syntax: " + valueExpression);
+        }
+
+        String values = valueExpression.substring(1, valueExpression.length() - 1).trim();
+        List<Object> initValues = new ArrayList<>();
+        if (!values.isEmpty()) {
+            for (String val : splitArguments(values)) {
+                initValues.add(evaluate(val.trim()));
+            }
+        }
+
+        return structDef.createInstance(initValues);
     }
 
     /**
@@ -652,37 +729,10 @@ public class Executor {
                 Object value = evaluate(args[i]);
                 String expectedType = parameters.get(i).getType();
                 // Ensure the value matches the expected type
-                switch (expectedType) {
-                    case "String":
-                        if (!(value instanceof String)) {
-                            throw new RuntimeException("Type error: Argument " + args[i] + " is not a String.");
-                        }
-                        break;
-                    case "Int32":
-                    case "Int64":
-                        if (!(value instanceof Integer)) {
-                            throw new RuntimeException("Type error: Argument " + args[i] + " is not an Integer.");
-                        }
-                        break;
-                    case "Float32":
-                        if (!(value instanceof Float)) {
-                            throw new RuntimeException("Type error: Argument " + args[i] + " is not a Float32.");
-                        }
-                        break;
-                    case "Float64":
-                        if (!(value instanceof Double)) {
-                            throw new RuntimeException("Type error: Argument " + args[i] + " is not a Float64.");
-                        }
-                        break;
-                    case "Char":
-                        if (!(value instanceof Character)) {
-                            throw new RuntimeException("Type error: Argument " + args[i] + " is not a Character.");
-                        }
-                        break;
-                    default:
-                        throw new RuntimeException("Unknown type annotation: " + expectedType);
+                if (!isValueCompatibleWithType(value, expectedType)) {
+                    throw new RuntimeException("Type error: Argument " + args[i] + " is not compatible with " + expectedType + ".");
                 }
-                localEnv.setVariable(parameters.get(i).getName(), value);
+                localEnv.setVariable(parameters.get(i).getName(), coerceValueForType(value, expectedType));
             }
 
             Object returnValue = null;
@@ -799,42 +849,10 @@ public class Executor {
                         returnValue = new Executor(localEnv).evaluate(returnExpression);
                         // Ensure the return value matches the expected return type
                         String expectedReturnType = function.getReturnType();
-                        switch (expectedReturnType) {
-                            case "String":
-                                if (!(returnValue instanceof String)) {
-                                    throw new RuntimeException("Type error: Return value " + returnValue + " is not a String.");
-                                }
-                                break;
-                            case "Int32":
-                            case "Int64":
-                                if (!(returnValue instanceof Integer)) {
-                                    throw new RuntimeException("Type error: Return value " + returnValue + " is not an Integer.");
-                                }
-                                break;
-                            case "Float32":
-                                if (!(returnValue instanceof Float)) {
-                                    throw new RuntimeException("Type error: Return value " + returnValue + " is not a Float32.");
-                                }
-                                break;
-                            case "Float64":
-                                if (!(returnValue instanceof Double)) {
-                                    // Convert Integer to Double if necessary
-                                    if (returnValue instanceof Integer) {
-                                        returnValue = ((Integer) returnValue).doubleValue();
-                                    } else {
-                                        throw new RuntimeException("Type error: Return value " + returnValue + " is not a Float64.");
-                                    }
-                                }
-                                break;
-                            case "Char":
-                                if (!(returnValue instanceof Character)) {
-                                    throw new RuntimeException("Type error: Return value " + returnValue + " is not a Character.");
-                                }
-                                break;
-                            default:
-                                throw new RuntimeException("Unknown return type annotation: " + expectedReturnType);
+                        if (!isValueCompatibleWithType(returnValue, expectedReturnType)) {
+                            throw new RuntimeException("Type error: Return value " + returnValue + " is not compatible with " + expectedReturnType + ".");
                         }
-                        return returnValue; // Exit the function immediately after return
+                        return coerceValueForType(returnValue, expectedReturnType); // Exit the function immediately after return
                     }
                     // Use a local executor to ensure variable modifications are retained
                     new Executor(localEnv, false).execute(line); // Pass the already trimmed line
