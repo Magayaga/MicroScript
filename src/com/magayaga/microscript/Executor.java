@@ -271,12 +271,12 @@ public class Executor {
                 int equalsIndex = declaration.indexOf('=');
                 if (equalsIndex != -1) {
                     String varDeclaration = declaration.substring(0, equalsIndex).trim();
-                    String[] parts = varDeclaration.split(":");
-                    if (parts.length != 2) {
+                    int typeSeparator = varDeclaration.lastIndexOf(':');
+                    if (typeSeparator == -1) {
                         throw new RuntimeException("Syntax error in variable declaration: " + expression);
                     }
-                    String varName = parts[0].trim();
-                    String typeAnnotation = parts[1].trim();
+                    String varName = varDeclaration.substring(0, typeSeparator).trim();
+                    String typeAnnotation = varDeclaration.substring(typeSeparator + 1).trim();
                     String valueExpression = declaration.substring(equalsIndex + 1).trim().replace(";", "");
                     Object value;
 
@@ -367,12 +367,12 @@ public class Executor {
                 int equalsIndex = declaration.indexOf('=');
                 if (equalsIndex != -1) {
                     String varDeclaration = declaration.substring(0, equalsIndex).trim();
-                    String[] parts = varDeclaration.split(":");
-                    if (parts.length != 2) {
+                    int typeSeparator = varDeclaration.lastIndexOf(':');
+                    if (typeSeparator == -1) {
                         throw new RuntimeException("Syntax error in struct instance declaration: " + expression);
                     }
-                    String varName = parts[0].trim();
-                    String structName = parts[1].trim();
+                    String varName = varDeclaration.substring(0, typeSeparator).trim();
+                    String structName = varDeclaration.substring(typeSeparator + 1).trim();
                     String valueExpression = declaration.substring(equalsIndex + 1).trim().replace(";", "");
 
                     Struct structDef = environment.getStruct(structName);
