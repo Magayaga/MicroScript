@@ -785,16 +785,34 @@ public class ExpressionEvaluator {
                         }
                         skipWhitespace();
                         
-                        Object func = environment.getVariable(fullName.toString());
-                        if (func instanceof Import.FunctionInterface) {
+                        Object moduleFunc = environment.getVariable(fullName.toString());
+                        if (moduleFunc instanceof Import.FunctionInterface) {
                             Object[] argsArray = new Object[args.size()];
                             for (int i = 0; i < args.size(); i++) {
                                 argsArray[i] = args.get(i);
                             }
-                            return ((Import.FunctionInterface)func).call(argsArray);
+                            return ((Import.FunctionInterface) moduleFunc).call(argsArray);
                         }
+
+                        Function userFunction = environment.getFunction(fullName.toString());
+                        if (userFunction != null) {
+                            String[] argStrings = new String[args.size()];
+                            for (int i = 0; i < args.size(); i++) {
+                                Object arg = args.get(i);
+                                argStrings[i] = arg.toString();
+                            }
+                            Executor executor = new Executor(environment);
+                            return executor.executeFunction(fullName.toString(), argStrings);
+                        }
+
                         throw new RuntimeException("Unknown module function: " + fullName);
                     }
+
+                    Object moduleValue = environment.getVariable(fullName.toString());
+                    if (moduleValue != null) {
+                        return moduleValue;
+                    }
+
                     throw new RuntimeException("Expected '(' after module function " + fullName);
                 } else {
                     pos--; // Go back if second : is not found

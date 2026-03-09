@@ -105,6 +105,13 @@ public class Parser {
                 i = afterLoop; // Skip all lines in the loop
             }
             
+            // Handle namespace block
+            else if (line.startsWith("namespace ")) {
+                int closingBraceIndex = findClosingBrace(i);
+                parseNamespace(i, closingBraceIndex);
+                i = closingBraceIndex + 1;
+            }
+
             // Handle struct definition
             else if (line.startsWith("struct ")) {
                 int closingBraceIndex = findClosingBrace(i);
@@ -265,25 +272,29 @@ public class Parser {
     }
 
     private void parseFunction(int start, int end) {
+        parseFunction(start, end, "");
+    }
+
+    private void parseFunction(int start, int end, String namePrefix) {
         String header = lines.get(start).trim();
         
         // C-style function declaration regex
-        Pattern cStylePattern = Pattern.compile("^(String|Int32|Int64|Float32|Float64|fn)\\s+(\\w+)\\s*\\(([^)]*)\\)\\s*\\{");
+        Pattern cStylePattern = Pattern.compile("^(String|Int32|Int64|Float32|Float64|fn)\\s+([\\w:]+)\\s*\\(([^)]*)\\)\\s*\\{");
         Matcher cStyleMatcher = cStylePattern.matcher(header);
     
         // MicroScript-style function declaration regex
-        Pattern microScriptPattern = Pattern.compile("function\\s+(\\w+)\\(([^)]*)\\)\\s*(->\\s*(\\w+))?\\s*\\{");
+        Pattern microScriptPattern = Pattern.compile("function\\s+([\\w:]+)\\(([^)]*)\\)\\s*(->\\s*(\\w+))?\\s*\\{");
         Matcher microScriptMatcher = microScriptPattern.matcher(header);
     
         if (cStyleMatcher.matches()) {
             String returnType = cStyleMatcher.group(1);
-            String name = cStyleMatcher.group(2);
+            String name = namePrefix + cStyleMatcher.group(2);
             String params = cStyleMatcher.group(3).trim();
             parseFunctionBody(name, params, returnType, start, end);
         }
         
         else if (microScriptMatcher.matches()) {
-            String name = microScriptMatcher.group(1);
+            String name = namePrefix + microScriptMatcher.group(1);
             String params = microScriptMatcher.group(2).trim();
             String returnType = microScriptMatcher.group(4) != null ? microScriptMatcher.group(4).trim() : "void";
             parseFunctionBody(name, params, returnType, start, end);
@@ -382,7 +393,7 @@ public class Parser {
         }
 
         // Function call
-        Pattern callPattern = Pattern.compile("(\\w+)\\((.*)\\);");
+        Pattern callPattern = Pattern.compile("([\\w:]+)\\((.*)\\);");
         Matcher callMatcher = callPattern.matcher(line);
         if (callMatcher.matches()) {
             String functionName = callMatcher.group(1);
@@ -500,12 +511,110 @@ public class Parser {
         }
     }
 
+    private void parseNamespace(int start, int end) {
+        String header = lines.get(start).trim();
+        Pattern namespacePattern = Pattern.compile("namespace\\s+([A-Za-z_]\\w*)\\s*\\{");
+        Matcher namespaceMatcher = namespacePattern.matcher(header);
+
+        if (!namespaceMatcher.matches()) {
+            throw new RuntimeException("Invalid namespace declaration syntax: " + header);
+        }
+
+        String namespaceName = namespaceMatcher.group(1);
+        String prefix = namespaceName + "::";
+
+        for (int i = start + 1; i < end; i++) {
+            String line = lines.get(i).trim();
+
+            if (line.isEmpty() || line.startsWith("//")) {
+                continue;
+            }
+
+            if (line.matches("^(String|Int32|Int64|Float32|Float64|fn)\\s+\\w+\\s*\\(.*\\)\\s*\\{")) {
+                int closingBraceIndex = findClosingBrace(i);
+                parseFunction(i, closingBraceIndex, prefix);
+                i = closingBraceIndex;
+            } else if (line.startsWith("function ")) {
+                int closingBraceIndex = findClosingBrace(i);
+                parseFunction(i, closingBraceIndex, prefix);
+                i = closingBraceIndex;
+            } else if (line.startsWith("struct ")) {
+                int closingBraceIndex = findClosingBrace(i);
+                parseStruct(i, closingBraceIndex, prefix);
+                i = closingBraceIndex;
+            } else {
+                parseLineWithNamespace(line, prefix);
+            }
+        }
+    }
+
+    private void parseLineWithNamespace(String line, String prefix) {
+        String trimmed = line.trim();
+
+        if (trimmed.startsWith("var ") || trimmed.startsWith("bool ") || trimmed.startsWith("letexpr ")) {
+            int start = trimmed.startsWith("bool ") ? 5 : 4;
+            if (trimmed.startsWith("letexpr ")) {
+                start = 8;
+            }
+
+            int separator = trimmed.indexOf(':', start);
+            if (separator == -1) {
+                separator = trimmed.indexOf('=', start);
+            }
+            if (separator == -1) {
+                throw new RuntimeException("Invalid namespaced declaration: " + trimmed);
+            }
+
+            String varName = trimmed.substring(start, separator).trim();
+            String rewritten = trimmed.substring(0, start) + prefix + varName + trimmed.substring(separator);
+
+            int equalsIndex = rewritten.indexOf('=');
+            if (separator == trimmed.indexOf(':', start) && equalsIndex > -1) {
+                int rewrittenTypeSeparator = rewritten.lastIndexOf(':', equalsIndex);
+                if (rewrittenTypeSeparator > -1) {
+                    String typeName = rewritten.substring(rewrittenTypeSeparator + 1, equalsIndex).trim();
+                    if (!typeName.contains("::") && environment.getStruct(prefix + typeName) != null) {
+                        rewritten = rewritten.substring(0, rewrittenTypeSeparator + 1) + " " + prefix + typeName + rewritten.substring(equalsIndex);
+                    }
+                }
+            }
+
+            parseLine(rewritten);
+            return;
+        }
+
+        Pattern namespacedCallPattern = Pattern.compile("(\\w+)\\((.*)\\);");
+        Matcher namespacedCallMatcher = namespacedCallPattern.matcher(trimmed);
+        if (namespacedCallMatcher.matches()) {
+            String functionName = namespacedCallMatcher.group(1);
+            if (!functionName.contains("::")) {
+                parseLine(prefix + functionName + "(" + namespacedCallMatcher.group(2) + ");");
+                return;
+            }
+        }
+
+        if (trimmed.contains("=") && !trimmed.contains("==")) {
+            int equalsIndex = trimmed.indexOf('=');
+            String left = trimmed.substring(0, equalsIndex).trim();
+            String right = trimmed.substring(equalsIndex + 1);
+            parseLine(prefix + left + " =" + right);
+            return;
+        }
+
+        parseLine(trimmed);
+    }
+
+
     /**
      * Parse a struct definition
      * @param start The index of the line with the struct keyword
      * @param end The index of the closing brace
      */
     private void parseStruct(int start, int end) {
+        parseStruct(start, end, "");
+    }
+
+    private void parseStruct(int start, int end, String namePrefix) {
         // Collect the struct definition lines
         List<String> structLines = new ArrayList<>();
         for (int i = start; i <= end; i++) {
@@ -516,6 +625,10 @@ public class Parser {
         Struct structDef = Struct.parseStructDefinition(structLines, 0);
         
         // Register the struct in the environment
+        if (!namePrefix.isEmpty()) {
+            structDef = new Struct(namePrefix + structDef.getName(), structDef.getFields());
+        }
+
         environment.defineStruct(structDef);
     }
 
