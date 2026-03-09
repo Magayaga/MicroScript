@@ -278,7 +278,15 @@ public class Executor {
                     String varName = parts[0].trim();
                     String typeAnnotation = parts[1].trim();
                     String valueExpression = declaration.substring(equalsIndex + 1).trim().replace(";", "");
-                    Object value = evaluate(valueExpression);
+                    Object value;
+
+                    // Support struct initialization: var person: Person = {"Jane", 35.0};
+                    Struct structDefinition = environment.getStruct(typeAnnotation);
+                    if (structDefinition != null && valueExpression.startsWith("{") && valueExpression.endsWith("}")) {
+                        value = createStructInstance(structDefinition, valueExpression);
+                    } else {
+                        value = evaluate(valueExpression);
+                    }
 
                     // Ensure the value matches the type annotation
                     switch (typeAnnotation) {
@@ -309,9 +317,20 @@ public class Executor {
                             }
                             break;
                         default:
-                            throw new RuntimeException("Unknown type annotation: " + typeAnnotation);
+                            Struct structDef = environment.getStruct(typeAnnotation);
+                            if (structDef == null) {
+                                throw new RuntimeException("Unknown type annotation: " + typeAnnotation);
+                            }
+                            if (!(value instanceof Struct)) {
+                                throw new RuntimeException("Type error: " + valueExpression + " is not a struct instance.");
+                            }
+                            Struct structValue = (Struct) value;
+                            if (!typeAnnotation.equals(structValue.getName())) {
+                                throw new RuntimeException("Type error: struct instance type mismatch. Expected " +
+                                        typeAnnotation + " but got " + structValue.getName());
+                            }
                     }
-
+                    
                     environment.setVariable(varName, value);
                 }
                 
@@ -355,28 +374,13 @@ public class Executor {
                     String varName = parts[0].trim();
                     String structName = parts[1].trim();
                     String valueExpression = declaration.substring(equalsIndex + 1).trim().replace(";", "");
-                    
-                    // Get the struct definition
+
                     Struct structDef = environment.getStruct(structName);
                     if (structDef == null) {
                         throw new RuntimeException("Struct '" + structName + "' is not defined");
                     }
-                    
-                    // Parse the initialization values: {value1, value2, ...}
-                    if (!valueExpression.startsWith("{") || !valueExpression.endsWith("}")) {
-                        throw new RuntimeException("Struct initialization must use {} syntax: " + valueExpression);
-                    }
-                    
-                    String values = valueExpression.substring(1, valueExpression.length() - 1).trim();
-                    List<Object> initValues = new ArrayList<>();
-                    if (!values.isEmpty()) {
-                        for (String val : splitArguments(values)) {
-                            initValues.add(evaluate(val.trim()));
-                        }
-                    }
-                    
-                    // Create the struct instance
-                    Struct instance = structDef.createInstance(initValues);
+
+                    Struct instance = createStructInstance(structDef, valueExpression);
                     environment.setVariable(varName, instance);
                 }
                 
@@ -447,6 +451,22 @@ public class Executor {
         catch (Exception e) {
             System.out.println("Evaluation error: " + e.getMessage());
         }
+    }
+
+    private Struct createStructInstance(Struct structDef, String valueExpression) {
+        if (!valueExpression.startsWith("{") || !valueExpression.endsWith("}")) {
+            throw new RuntimeException("Struct initialization must use {} syntax: " + valueExpression);
+        }
+
+        String values = valueExpression.substring(1, valueExpression.length() - 1).trim();
+        List<Object> initValues = new ArrayList<>();
+        if (!values.isEmpty()) {
+            for (String val : splitArguments(values)) {
+                initValues.add(evaluate(val.trim()));
+            }
+        }
+
+        return structDef.createInstance(initValues);
     }
 
     /**
@@ -1028,3 +1048,4 @@ public class Executor {
         return evaluator.parse();
     }
 }
+
