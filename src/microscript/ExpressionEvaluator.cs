@@ -103,7 +103,7 @@ namespace com.magayaga.microscript
                     {
                         throw new Exception($"Variable '{func}' not found.");
                     }
-                    x = (double)variable;
+                    x = Convert.ToDouble(variable);
                 }
             }
 

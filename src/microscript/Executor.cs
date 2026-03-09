@@ -70,38 +70,7 @@ namespace com.magayaga.microscript
                         var valueExpression = declaration.Substring(equalsIndex + 1).Trim().Replace(";", "");
                         var value = Evaluate(valueExpression);
 
-                        switch (typeAnnotation)
-                        {
-                            case "String":
-                                if (!(value is string))
-                                {
-                                    throw new Exception($"Type error: {valueExpression} is not a String.");
-                                }
-                                break;
-                            case "Int32":
-                            case "Int64":
-                                if (!(value is int))
-                                {
-                                    throw new Exception($"Type error: {valueExpression} is not an Integer.");
-                                }
-                                break;
-                            case "Float32":
-                                if (!(value is float))
-                                {
-                                    throw new Exception($"Type error: {valueExpression} is not a Float32.");
-                                }
-                                break;
-                            case "Float64":
-                                if (!(value is double))
-                                {
-                                    throw new Exception($"Type error: {valueExpression} is not a Float64.");
-                                }
-                                break;
-                            default:
-                                throw new Exception($"Unknown type annotation: {typeAnnotation}");
-                        }
-
-                        environment.SetVariable(varName, value);
+                        environment.SetVariable(varName, CoerceTypedValue(typeAnnotation, value, valueExpression));
                     }
 
                     else
@@ -221,37 +190,7 @@ namespace com.magayaga.microscript
             {
                 var value = Evaluate(args[i]);
                 var expectedType = parameters[i].GetType();
-                switch (expectedType)
-                {
-                    case "String":
-                        if (!(value is string))
-                        {
-                            throw new Exception($"Type error: Argument {args[i]} is not a String.");
-                        }
-                        break;
-                    case "Int32":
-                    case "Int64":
-                        if (!(value is int))
-                        {
-                            throw new Exception($"Type error: Argument {args[i]} is not an Integer.");
-                        }
-                        break;
-                    case "Float32":
-                        if (!(value is float))
-                        {
-                            throw new Exception($"Type error: Argument {args[i]} is not a Float32.");
-                        }
-                        break;
-                    case "Float64":
-                        if (!(value is double))
-                        {
-                            throw new Exception($"Type error: Argument {args[i]} is not a Float64.");
-                        }
-                        break;
-                    default:
-                        throw new Exception($"Unknown type annotation: {expectedType}");
-                }
-                localEnv.SetVariable(parameters[i].GetName(), value);
+                localEnv.SetVariable(parameters[i].GetName(), CoerceTypedValue(expectedType, value, $"Argument {args[i]}"));
             }
 
             object? returnValue = null;
@@ -262,37 +201,7 @@ namespace com.magayaga.microscript
                     var returnExpression = line.Substring(line.IndexOf("return") + 6).Trim().Replace(";", "");
                     returnValue = new Executor(localEnv).Evaluate(returnExpression);
                     var expectedReturnType = function.GetReturnType();
-                    switch (expectedReturnType)
-                    {
-                        case "String":
-                            if (!(returnValue is string))
-                            {
-                                throw new Exception($"Type error: Return value {returnValue} is not a String.");
-                            }
-                            break;
-                        case "Int32":
-                        case "Int64":
-                            if (!(returnValue is int))
-                            {
-                                throw new Exception($"Type error: Return value {returnValue} is not an Integer.");
-                            }
-                            break;
-                        case "Float32":
-                            if (!(returnValue is float))
-                            {
-                                throw new Exception($"Type error: Return value {returnValue} is not a Float32.");
-                            }
-                            break;
-                        case "Float64":
-                            if (!(returnValue is double))
-                            {
-                                throw new Exception($"Type error: Return value {returnValue} is not a Float64.");
-                            }
-                            break;
-                        default:
-                            throw new Exception($"Unknown return type annotation: {expectedReturnType}");
-                    }
-                    return returnValue;
+                    return CoerceTypedValue(expectedReturnType, returnValue, $"Return value {returnValue}");
                 }
                 new Executor(localEnv).Execute(line);
             }
@@ -384,6 +293,64 @@ namespace com.magayaga.microscript
                 }
             }
             return strExpression;
+        }
+
+        private static object CoerceTypedValue(string typeAnnotation, object? value, string subject)
+        {
+            switch (typeAnnotation)
+            {
+                case "String":
+                    if (value is string str)
+                    {
+                        return str;
+                    }
+                    throw new Exception($"Type error: {subject} is not a String.");
+
+                case "Int32":
+                    return CoerceInteger(value, subject, int.MinValue, int.MaxValue, "Int32", n => (int)n);
+
+                case "Int64":
+                    return CoerceInteger(value, subject, long.MinValue, long.MaxValue, "Int64", n => n);
+
+                case "Float32":
+                    if (value is IConvertible conv32)
+                    {
+                        return Convert.ToSingle(conv32);
+                    }
+                    throw new Exception($"Type error: {subject} is not a Float32.");
+
+                case "Float64":
+                    if (value is IConvertible conv64)
+                    {
+                        return Convert.ToDouble(conv64);
+                    }
+                    throw new Exception($"Type error: {subject} is not a Float64.");
+
+                default:
+                    throw new Exception($"Unknown type annotation: {typeAnnotation}");
+            }
+        }
+
+        private static object CoerceInteger(object? value, string subject, long min, long max, string typeName, Func<long, object> converter)
+        {
+            if (!(value is IConvertible conv))
+            {
+                throw new Exception($"Type error: {subject} is not an {typeName}.");
+            }
+
+            var number = Convert.ToDouble(conv);
+            if (Math.Abs(number % 1) > 0.0000001)
+            {
+                throw new Exception($"Type error: {subject} is not an {typeName}.");
+            }
+
+            var integerValue = Convert.ToInt64(number);
+            if (integerValue < min || integerValue > max)
+            {
+                throw new Exception($"Type error: {subject} is out of range for {typeName}.");
+            }
+
+            return converter(integerValue);
         }
     }
 }

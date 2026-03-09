@@ -16,13 +16,12 @@ import java.util.Arrays;
 import java.util.Scanner;
 
 public class Executor {
-    /* Change from private to package-private (default) access */
-    final Environment environment;
-    
+    private final Environment environment;
+
     // Flag to track if we're inside a loop context
     private boolean inLoopContext = false;
-    
-    private static Scanner scanner = new Scanner(System.in);
+
+    private static final Scanner scanner = new Scanner(System.in);
 
     // Pre-compiled regex patterns
     private static final Pattern CONSOLE_WRITE_PATTERN = Pattern.compile("console\\.write\\((.*)\\);");
@@ -291,25 +290,11 @@ public class Executor {
                     // Ensure the value matches the type annotation
                     switch (typeAnnotation) {
                         case "String":
-                            if (!(value instanceof String)) {
-                                throw new RuntimeException("Type error: " + valueExpression + " is not a String.");
-                            }
-                            break;
                         case "Int32":
                         case "Int64":
-                            if (!(value instanceof Integer)) {
-                                throw new RuntimeException("Type error: " + valueExpression + " is not an Integer.");
-                            }
-                            break;
                         case "Float32":
-                            if (!(value instanceof Float)) {
-                                throw new RuntimeException("Type error: " + valueExpression + " is not a Float32.");
-                            }
-                            break;
                         case "Float64":
-                            if (!(value instanceof Double)) {
-                                throw new RuntimeException("Type error: " + valueExpression + " is not a Float64.");
-                            }
+                            value = coerceTypedValue(typeAnnotation, value, valueExpression);
                             break;
                         case "Char":
                             if (!(value instanceof Character)) {
@@ -674,25 +659,11 @@ public class Executor {
                 // Ensure the value matches the expected type
                 switch (expectedType) {
                     case "String":
-                        if (!(value instanceof String)) {
-                            throw new RuntimeException("Type error: Argument " + args[i] + " is not a String.");
-                        }
-                        break;
                     case "Int32":
                     case "Int64":
-                        if (!(value instanceof Integer)) {
-                            throw new RuntimeException("Type error: Argument " + args[i] + " is not an Integer.");
-                        }
-                        break;
                     case "Float32":
-                        if (!(value instanceof Float)) {
-                            throw new RuntimeException("Type error: Argument " + args[i] + " is not a Float32.");
-                        }
-                        break;
                     case "Float64":
-                        if (!(value instanceof Double)) {
-                            throw new RuntimeException("Type error: Argument " + args[i] + " is not a Float64.");
-                        }
+                        value = coerceTypedValue(expectedType, value, "Argument " + args[i]);
                         break;
                     case "Char":
                         if (!(value instanceof Character)) {
@@ -821,30 +792,11 @@ public class Executor {
                         String expectedReturnType = function.getReturnType();
                         switch (expectedReturnType) {
                             case "String":
-                                if (!(returnValue instanceof String)) {
-                                    throw new RuntimeException("Type error: Return value " + returnValue + " is not a String.");
-                                }
-                                break;
                             case "Int32":
                             case "Int64":
-                                if (!(returnValue instanceof Integer)) {
-                                    throw new RuntimeException("Type error: Return value " + returnValue + " is not an Integer.");
-                                }
-                                break;
                             case "Float32":
-                                if (!(returnValue instanceof Float)) {
-                                    throw new RuntimeException("Type error: Return value " + returnValue + " is not a Float32.");
-                                }
-                                break;
                             case "Float64":
-                                if (!(returnValue instanceof Double)) {
-                                    // Convert Integer to Double if necessary
-                                    if (returnValue instanceof Integer) {
-                                        returnValue = ((Integer) returnValue).doubleValue();
-                                    } else {
-                                        throw new RuntimeException("Type error: Return value " + returnValue + " is not a Float64.");
-                                    }
-                                }
+                                returnValue = coerceTypedValue(expectedReturnType, returnValue, "Return value " + returnValue);
                                 break;
                             case "Char":
                                 if (!(returnValue instanceof Character)) {
@@ -1046,6 +998,50 @@ public class Executor {
         // Otherwise, treat it as an arithmetic expression
         ExpressionEvaluator evaluator = new ExpressionEvaluator(expression, environment);
         return evaluator.parse();
+    }
+
+    private Object coerceTypedValue(String typeAnnotation, Object value, String subject) {
+        switch (typeAnnotation) {
+            case "String":
+                if (value instanceof String) {
+                    return value;
+                }
+                throw new RuntimeException("Type error: " + subject + " is not a String.");
+            case "Int32":
+                return coerceInteger(value, Integer.MIN_VALUE, Integer.MAX_VALUE, "Int32", subject, true);
+            case "Int64":
+                return coerceInteger(value, Long.MIN_VALUE, Long.MAX_VALUE, "Int64", subject, false);
+            case "Float32":
+                if (value instanceof Number) {
+                    return ((Number) value).floatValue();
+                }
+                throw new RuntimeException("Type error: " + subject + " is not a Float32.");
+            case "Float64":
+                if (value instanceof Number) {
+                    return ((Number) value).doubleValue();
+                }
+                throw new RuntimeException("Type error: " + subject + " is not a Float64.");
+            default:
+                throw new RuntimeException("Unknown type annotation: " + typeAnnotation);
+        }
+    }
+
+    private Object coerceInteger(Object value, long min, long max, String typeName, String subject, boolean asInt) {
+        if (!(value instanceof Number)) {
+            throw new RuntimeException("Type error: " + subject + " is not an " + typeName + ".");
+        }
+
+        double number = ((Number) value).doubleValue();
+        if (Math.abs(number % 1) > 0.0000001) {
+            throw new RuntimeException("Type error: " + subject + " is not an " + typeName + ".");
+        }
+
+        long longValue = (long) number;
+        if (longValue < min || longValue > max) {
+            throw new RuntimeException("Type error: " + subject + " is out of range for " + typeName + ".");
+        }
+
+        return asInt ? (int) longValue : longValue;
     }
 }
 
