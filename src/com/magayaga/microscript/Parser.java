@@ -56,17 +56,24 @@ public class Parser {
 
             // Handle @__globalfn__ block
             else if (line.startsWith("@__globalfn__")) {
-                // Find the opening brace
-                int braceLine = i + 1;
-                while (braceLine < lines.size() && !lines.get(braceLine).trim().equals("{")) {
-                    braceLine++;
+                // Support both forms:
+                //   @__globalfn__ {
+                //   @__globalfn__ followed by a separate "{" line
+                int braceLine;
+                if (line.contains("{")) {
+                    braceLine = i;
+                } else {
+                    braceLine = i + 1;
+                    while (braceLine < lines.size() && !lines.get(braceLine).trim().equals("{")) {
+                        braceLine++;
+                    }
                 }
                 if (braceLine >= lines.size()) {
                     throw new RuntimeException("Missing opening brace for @__globalfn__ block");
                 }
-                
+
                 int closingBraceIndex = findClosingBrace(braceLine);
-                parseGlobalFunctionBlock(i, closingBraceIndex);
+                parseGlobalFunctionBlock(braceLine, closingBraceIndex);
                 i = closingBraceIndex + 1;
             }
 
@@ -638,7 +645,7 @@ public class Parser {
      */
     public java.util.function.Function<Object, Object> makeUnaryLambda(String lambda, Executor executor) {
         return (arg) -> {
-            Environment localEnv = new Environment(executor.environment);
+            Environment localEnv = new Environment(executor.getEnvironment());
             localEnv.setVariable("it", arg);  // Use 'it' as default parameter name
             return new Executor(localEnv).evaluate(lambda);
         };
@@ -649,7 +656,7 @@ public class Parser {
      */
     public java.util.function.Function<Object, Boolean> makePredicateLambda(String lambda, Executor executor) {
         return (arg) -> {
-            Environment localEnv = new Environment(executor.environment);
+            Environment localEnv = new Environment(executor.getEnvironment());
             localEnv.setVariable("it", arg);
             Object result = new Executor(localEnv).evaluate(lambda);
             return result instanceof Boolean ? (Boolean) result : false;
@@ -661,7 +668,7 @@ public class Parser {
      */
     public java.util.function.BiFunction<Object, Object, Object> makeBinaryLambda(String lambda, Executor executor) {
         return (arg1, arg2) -> {
-            Environment localEnv = new Environment(executor.environment);
+            Environment localEnv = new Environment(executor.getEnvironment());
             localEnv.setVariable("acc", arg1);  // First argument is accumulator
             localEnv.setVariable("it", arg2);   // Second argument is current item
             return new Executor(localEnv).evaluate(lambda);
