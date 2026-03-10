@@ -23,6 +23,7 @@ namespace com.magayaga.microscript
 
         public void Parse()
         {
+            bool hasCStyleMain = false;
             int i = 0;
             while (i < lines.Count)
             {
@@ -33,7 +34,21 @@ namespace com.magayaga.microscript
                     continue;
                 }
 
-                if (line.StartsWith("function "))
+                if (Regex.IsMatch(line, @"^(String|Int32|Int64|Float32|Float64|fn)\s+\w+\s*\(.*\)\s*\{"))
+                {
+                    int closingBraceIndex = FindClosingBrace(i);
+                    if (closingBraceIndex == -1)
+                    {
+                        throw new Exception("Syntax error: Unmatched '{' in function definition.");
+                    }
+                    ParseFunction(i, closingBraceIndex);
+                    if (Regex.IsMatch(line, @"^fn\s+main\s*\("))
+                    {
+                        hasCStyleMain = true;
+                    }
+                    i = closingBraceIndex + 1;
+                }
+                else if (line.StartsWith("function "))
                 {
                     int closingBraceIndex = FindClosingBrace(i);
                     if (closingBraceIndex == -1)
@@ -43,10 +58,30 @@ namespace com.magayaga.microscript
                     ParseFunction(i, closingBraceIndex);
                     i = closingBraceIndex + 1;
                 }
+                else if (line.StartsWith("if"))
+                {
+                    var executor = new Executor(environment);
+                    i = Statements.ProcessConditionalStatement(lines, i, executor);
+                }
+                else if (line.StartsWith("for") || line.StartsWith("while"))
+                {
+                    var executor = new Executor(environment);
+                    i = Statements.ProcessLoopStatement(lines, i, executor);
+                }
                 else
                 {
                     ParseLine(line);
                     i++;
+                }
+            }
+
+            if (hasCStyleMain)
+            {
+                var mainFunction = environment.GetFunction("main");
+                if (mainFunction != null)
+                {
+                    var executor = new Executor(environment);
+                    executor.ExecuteFunction("main", Array.Empty<string>());
                 }
             }
         }
@@ -54,15 +89,30 @@ namespace com.magayaga.microscript
         private void ParseFunction(int start, int end)
         {
             var header = lines[start].Trim();
-            var matcher = Regex.Match(header, @"function\s+(\w+)\(([^)]*)\)\s*(->\s*(\w+))?\s*\{");
-            if (!matcher.Success)
+            var cStyleMatcher = Regex.Match(header, @"^(String|Int32|Int64|Float32|Float64|fn)\s+(\w+)\s*\(([^)]*)\)\s*\{");
+            var microScriptMatcher = Regex.Match(header, @"function\s+(\w+)\(([^)]*)\)\s*(->\s*(\w+))?\s*\{");
+
+            string name;
+            string paramsStr;
+            string returnType;
+
+            if (cStyleMatcher.Success)
+            {
+                returnType = cStyleMatcher.Groups[1].Value.Trim();
+                name = cStyleMatcher.Groups[2].Value;
+                paramsStr = cStyleMatcher.Groups[3].Value.Trim();
+            }
+            else if (microScriptMatcher.Success)
+            {
+                name = microScriptMatcher.Groups[1].Value;
+                paramsStr = microScriptMatcher.Groups[2].Value.Trim();
+                returnType = microScriptMatcher.Groups[4].Success ? microScriptMatcher.Groups[4].Value.Trim() : "void";
+            }
+            else
             {
                 throw new Exception("Syntax error: Invalid function declaration.");
             }
 
-            var name = matcher.Groups[1].Value;
-            var paramsStr = matcher.Groups[2].Value.Trim();
-            var returnType = matcher.Groups[4].Success ? matcher.Groups[4].Value.Trim() : "void";
             var parameters = new List<Parameter>();
             if (!string.IsNullOrEmpty(paramsStr))
             {
@@ -103,6 +153,19 @@ namespace com.magayaga.microscript
 
         private void ParseLine(string line)
         {
+            if (line.StartsWith("import "))
+            {
+                var moduleName = line.Substring(7).Trim();
+                Import.ImportModule(moduleName, environment);
+                return;
+            }
+            if (line.StartsWith("@map"))
+            {
+                var executor = new Executor(environment);
+                ParseMapOperation(line, executor);
+                return;
+            }
+
             var pattern = new Regex(@"console.write\((.*)\);");
             var matcher = pattern.Match(line);
             if (matcher.Success)
@@ -113,7 +176,7 @@ namespace com.magayaga.microscript
                 return;
             }
 
-            var callPattern = new Regex(@"(\w+)\((.*)\);");
+            var callPattern = new Regex(@"([\w:]+)\((.*)\);");
             var callMatcher = callPattern.Match(line);
             if (callMatcher.Success)
             {
@@ -131,7 +194,7 @@ namespace com.magayaga.microscript
                 return;
             }
 
-            if (line.StartsWith("var ") || line.StartsWith("bool "))
+            if (line.StartsWith("var ") || line.StartsWith("bool ") || line.StartsWith("list "))
             {
                 var executor = new Executor(environment);
                 executor.Execute(line);
@@ -147,5 +210,27 @@ namespace com.magayaga.microscript
                 executor.Execute($"{varName} = {valueExpression}");
             }
         }
+
+        private void ParseMapOperation(string line, Executor executor)
+        {
+            var matcher = Regex.Match(line, @"@map\s*=>\s*(\([^)]+\))\s*\[([^\]]+)\]");
+            if (!matcher.Success)
+            {
+                throw new Exception($"Invalid @map syntax: {line}");
+            }
+
+            var operation = matcher.Groups[1].Value.Trim();
+            var listExpression = matcher.Groups[2].Value.Trim();
+            var list = new List<object>();
+            foreach (var element in listExpression.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                list.Add(executor.Evaluate(element.Trim()));
+            }
+
+            var result = FunctionHigherOrder.ProcessMap(operation, list);
+            environment.SetVariable("_last_map_result", result);
+            Console.WriteLine($"Map result {operation}: [{string.Join(", ", result)}]");
+        }
+
     }
 }

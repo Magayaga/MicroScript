@@ -21,6 +21,11 @@ namespace com.magayaga.microscript
             this.environment = environment ?? throw new ArgumentNullException(nameof(environment));
         }
 
+        public Environment GetEnvironment()
+        {
+            return environment;
+        }
+
         public void Execute(string expression)
         {
             try
@@ -175,6 +180,18 @@ namespace com.magayaga.microscript
             var function = environment.GetFunction(functionName);
             if (function == null)
             {
+                var nativeFunction = environment.GetVariable(functionName) as Import.FunctionInterface;
+                if (nativeFunction != null)
+                {
+                    args ??= Array.Empty<string>();
+                    var nativeArgs = new object?[args.Length];
+                    for (int i = 0; i < args.Length; i++)
+                    {
+                        nativeArgs[i] = Evaluate(args[i]);
+                    }
+                    return nativeFunction(nativeArgs);
+                }
+
                 throw new Exception($"Function not found: {functionName}");
             }
 
@@ -217,7 +234,7 @@ namespace com.magayaga.microscript
                 return InterpolateString(strExpression);
             }
 
-            var functionCallPattern = new Regex(@"(\w+)\((.*)\)");
+            var functionCallPattern = new Regex(@"([\w:]+)\((.*)\)");
             var matcher = functionCallPattern.Match(expression);
             if (matcher.Success)
             {
