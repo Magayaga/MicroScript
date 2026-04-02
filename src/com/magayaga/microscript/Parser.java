@@ -126,6 +126,13 @@ public class Parser {
                 i = closingBraceIndex + 1;
             }
 
+            // Handle interface definition
+            else if (line.startsWith("interface ")) {
+                int closingBraceIndex = findClosingBrace(i);
+                parseInterface(i, closingBraceIndex);
+                i = closingBraceIndex + 1;
+            }
+
             else {
                 // Execute top-level commands
                 parseLine(line);
@@ -333,11 +340,16 @@ public class Parser {
         
     private int findClosingBrace(int start) {
         int openBraces = 0;
+        boolean seenOpeningBrace = false;
         for (int i = start; i < lines.size(); i++) {
             String line = lines.get(i);
-            openBraces += line.chars().filter(ch -> ch == '{').count();
+            long openedOnLine = line.chars().filter(ch -> ch == '{').count();
+            if (openedOnLine > 0) {
+                seenOpeningBrace = true;
+            }
+            openBraces += openedOnLine;
             openBraces -= line.chars().filter(ch -> ch == '}').count();
-            if (openBraces == 0) {
+            if (seenOpeningBrace && openBraces == 0) {
                 return i;
             }
         }
@@ -347,8 +359,15 @@ public class Parser {
     private void parseLine(String line) {
         line = line.trim();
         if (line.startsWith("import ")) {
-            String moduleName = line.substring(7).trim();
-            Import.importModule(moduleName, environment);
+            Pattern importPattern = Pattern.compile("import\\s+([\\p{L}_][\\p{L}\\p{N}_]*)(?:\\s+as\\s+([\\p{L}_][\\p{L}\\p{N}_]*))?\\s*;?");
+            Matcher importMatcher = importPattern.matcher(line);
+            if (!importMatcher.matches()) {
+                throw new RuntimeException("Invalid import syntax: " + line);
+            }
+
+            String moduleName = importMatcher.group(1);
+            String alias = importMatcher.group(2);
+            Import.importModule(moduleName, alias, environment);
             return;
         }
 
@@ -549,6 +568,10 @@ public class Parser {
                 int closingBraceIndex = findClosingBrace(i);
                 parseStruct(i, closingBraceIndex, prefix);
                 i = closingBraceIndex;
+            } else if (line.startsWith("interface ")) {
+                int closingBraceIndex = findClosingBrace(i);
+                parseInterface(i, closingBraceIndex, prefix);
+                i = closingBraceIndex;
             } else {
                 parseLineWithNamespace(line, prefix);
             }
@@ -580,9 +603,29 @@ public class Parser {
                 int rewrittenTypeSeparator = rewritten.lastIndexOf(':', equalsIndex);
                 if (rewrittenTypeSeparator > -1) {
                     String typeName = rewritten.substring(rewrittenTypeSeparator + 1, equalsIndex).trim();
-                    if (!typeName.contains("::") && environment.getStruct(prefix + typeName) != null) {
-                        rewritten = rewritten.substring(0, rewrittenTypeSeparator + 1) + " " + prefix + typeName + rewritten.substring(equalsIndex);
+                    String baseTypeName = typeName;
+                    int refinementIndex = typeName.indexOf(" where ");
+                    if (refinementIndex > -1) {
+                        baseTypeName = typeName.substring(0, refinementIndex).trim();
                     }
+
+                    boolean hasNamespacedStruct = environment.getStruct(prefix + baseTypeName) != null;
+                    boolean hasNamespacedInterface = environment.getInterface(prefix + baseTypeName) != null;
+                    if (!baseTypeName.contains("::") && (hasNamespacedStruct || hasNamespacedInterface)) {
+                        String namespacedType = prefix + baseTypeName + typeName.substring(baseTypeName.length());
+                        rewritten = rewritten.substring(0, rewrittenTypeSeparator + 1) + " " + namespacedType + rewritten.substring(equalsIndex);
+                    }
+                }
+            }
+
+            if (equalsIndex > -1) {
+                String rightHandSide = rewritten.substring(equalsIndex + 1).trim();
+                if (rightHandSide.endsWith(";")) {
+                    rightHandSide = rightHandSide.substring(0, rightHandSide.length() - 1).trim();
+                }
+
+                if (rightHandSide.matches("[\\p{L}_][\\p{L}\\p{N}_]*")) {
+                    rewritten = rewritten.substring(0, equalsIndex + 1) + " " + prefix + rightHandSide + ";";
                 }
             }
 
@@ -637,6 +680,24 @@ public class Parser {
         }
 
         environment.defineStruct(structDef);
+    }
+
+    private void parseInterface(int start, int end) {
+        parseInterface(start, end, "");
+    }
+
+    private void parseInterface(int start, int end, String namePrefix) {
+        List<String> interfaceLines = new ArrayList<>();
+        for (int i = start; i <= end; i++) {
+            interfaceLines.add(lines.get(i));
+        }
+
+        InterfaceContract contract = InterfaceContract.parseInterfaceDefinition(interfaceLines, 0);
+        if (!namePrefix.isEmpty()) {
+            contract = new InterfaceContract(namePrefix + contract.getName(), contract.getProperties(), contract.getMethods());
+        }
+
+        environment.defineInterface(contract);
     }
 
 

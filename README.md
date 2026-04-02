@@ -149,7 +149,7 @@ main();
 | `break`, `continue` | Java, *All | `break` keyword terminates the loop and `continue` keyword skips the current iteration of the loop and moves on to the next.
 | `struct` | Swift | A `struct` is a value type used to store variables of different data types. For example, `struct struct_name {...}`.
 | `namespace` | C++, TypeScript | It is used to group related code into a single named scope to prevent naming conflicts and organize the codebase.
-| `interface` | TypeScript, Java, Rust, C# | TBA
+| `interface` | TypeScript, Java, Rust, C# | The `interface` keyword defines a contract for the shape of an object or class. It specifies required properties and methods without providing implementation details.
 
 ## Copyright
 
