@@ -270,17 +270,28 @@ public class Executor {
                 int equalsIndex = declaration.indexOf('=');
                 if (equalsIndex != -1) {
                     String varDeclaration = declaration.substring(0, equalsIndex).trim();
-                    int typeSeparator = varDeclaration.lastIndexOf(':');
-                    if (typeSeparator == -1) {
+                    Pattern typedVarPattern = Pattern.compile("^([\\p{L}_][\\p{L}\\p{N}_]*(?:::[\\p{L}_][\\p{L}\\p{N}_]*)*)\\s*:\\s*(.+)$");
+                    Matcher typedVarMatcher = typedVarPattern.matcher(varDeclaration);
+                    if (!typedVarMatcher.matches()) {
                         throw new RuntimeException("Syntax error in variable declaration: " + expression);
                     }
-                    String varName = varDeclaration.substring(0, typeSeparator).trim();
-                    String typeAnnotation = varDeclaration.substring(typeSeparator + 1).trim();
+                    String varName = typedVarMatcher.group(1).trim();
+                    String typeAnnotation = typedVarMatcher.group(2).trim();
+                    String baseTypeAnnotation = typeAnnotation;
+                    String refinementExpression = null;
+                    int refinementIndex = typeAnnotation.indexOf(" where ");
+                    if (refinementIndex > -1) {
+                        baseTypeAnnotation = typeAnnotation.substring(0, refinementIndex).trim();
+                        refinementExpression = typeAnnotation.substring(refinementIndex + 7).trim();
+                        if (refinementExpression.isEmpty()) {
+                            throw new RuntimeException("Refinement type is missing a predicate: " + typeAnnotation);
+                        }
+                    }
                     String valueExpression = declaration.substring(equalsIndex + 1).trim().replace(";", "");
                     Object value;
 
                     // Support struct initialization: var person: Person = {"Jane", 35.0};
-                    Struct structDefinition = environment.getStruct(typeAnnotation);
+                    Struct structDefinition = environment.getStruct(baseTypeAnnotation);
                     if (structDefinition != null && valueExpression.startsWith("{") && valueExpression.endsWith("}")) {
                         value = createStructInstance(structDefinition, valueExpression);
                     } else {
@@ -288,13 +299,13 @@ public class Executor {
                     }
 
                     // Ensure the value matches the type annotation
-                    switch (typeAnnotation) {
+                    switch (baseTypeAnnotation) {
                         case "String":
                         case "Int32":
                         case "Int64":
                         case "Float32":
                         case "Float64":
-                            value = coerceTypedValue(typeAnnotation, value, valueExpression);
+                            value = coerceTypedValue(baseTypeAnnotation, value, valueExpression);
                             break;
                         case "Char":
                             if (!(value instanceof Character)) {
@@ -302,18 +313,36 @@ public class Executor {
                             }
                             break;
                         default:
-                            Struct structDef = environment.getStruct(typeAnnotation);
-                            if (structDef == null) {
-                                throw new RuntimeException("Unknown type annotation: " + typeAnnotation);
+                            Struct structDef = environment.getStruct(baseTypeAnnotation);
+                            if (structDef != null) {
+                                if (!(value instanceof Struct)) {
+                                    throw new RuntimeException("Type error: " + valueExpression + " is not a struct instance.");
+                                }
+                                Struct structValue = (Struct) value;
+                                if (!baseTypeAnnotation.equals(structValue.getName())) {
+                                    throw new RuntimeException("Type error: struct instance type mismatch. Expected " +
+                                            baseTypeAnnotation + " but got " + structValue.getName());
+                                }
+                            } else {
+                                InterfaceContract contract = environment.getInterface(baseTypeAnnotation);
+                                if (contract == null) {
+                                    throw new RuntimeException("Unknown type annotation: " + baseTypeAnnotation);
+                                }
+                                if (!(value instanceof Struct) || !contract.isSatisfiedBy((Struct) value)) {
+                                    throw new RuntimeException("Type error: " + valueExpression +
+                                            " does not satisfy interface " + baseTypeAnnotation);
+                                }
                             }
-                            if (!(value instanceof Struct)) {
-                                throw new RuntimeException("Type error: " + valueExpression + " is not a struct instance.");
-                            }
-                            Struct structValue = (Struct) value;
-                            if (!typeAnnotation.equals(structValue.getName())) {
-                                throw new RuntimeException("Type error: struct instance type mismatch. Expected " +
-                                        typeAnnotation + " but got " + structValue.getName());
-                            }
+                    }
+
+                    if (refinementExpression != null) {
+                        Environment refinementEnvironment = new Environment(environment);
+                        refinementEnvironment.setVariable("value", value);
+                        refinementEnvironment.setVariable("it", value);
+                        Object refinementResult = new Executor(refinementEnvironment).evaluate(refinementExpression);
+                        if (!(refinementResult instanceof Boolean) || !((Boolean) refinementResult)) {
+                            throw new RuntimeException("Refinement type check failed for " + varName + ": " + refinementExpression);
+                        }
                     }
                     
                     environment.setVariable(varName, value);
@@ -1044,4 +1073,3 @@ public class Executor {
         return asInt ? (int) longValue : longValue;
     }
 }
-

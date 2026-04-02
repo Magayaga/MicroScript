@@ -29,6 +29,27 @@ public class Import {
         }
     }
 
+    public static void importModule(String name, String alias, Environment env) {
+        importModule(name, env);
+
+        if (alias == null || alias.isBlank() || alias.equals(name)) {
+            return;
+        }
+
+        String sourcePrefix = name + "::";
+        String aliasPrefix = alias + "::";
+
+        for (String variableName : env.getVariableNames()) {
+            if (!variableName.startsWith(sourcePrefix)) {
+                continue;
+            }
+
+            String suffix = variableName.substring(sourcePrefix.length());
+            Object value = env.getVariable(variableName);
+            env.setVariable(aliasPrefix + suffix, value);
+        }
+    }
+
     // Module interface
     public interface Module {
         void register(Environment env);

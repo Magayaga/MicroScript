@@ -10,11 +10,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 
 public class Environment {
     private final Map<String, Object> variables;
     private final Map<String, Function> functions;
     private final Map<String, Struct> structs;
+    private final Map<String, InterfaceContract> interfaces;
     private final Set<String> immutableVariables;
     private final Environment parent;
 
@@ -22,6 +24,7 @@ public class Environment {
         this.variables = new HashMap<>();
         this.functions = new HashMap<>();
         this.structs = new HashMap<>();
+        this.interfaces = new HashMap<>();
         this.immutableVariables = new HashSet<>();
         this.parent = null;
     }
@@ -30,6 +33,7 @@ public class Environment {
         this.variables = new HashMap<>();
         this.functions = new HashMap<>();
         this.structs = new HashMap<>();
+        this.interfaces = new HashMap<>();
         this.immutableVariables = new HashSet<>();
         this.parent = parent;
     }
@@ -62,6 +66,12 @@ public class Environment {
             return parent.getVariable(name);
         }
         return null;
+    }
+
+    public Set<String> getVariableNames() {
+        Set<String> names = parent != null ? parent.getVariableNames() : new LinkedHashSet<>();
+        names.addAll(variables.keySet());
+        return names;
     }
 
     public void defineFunction(Function function) {
@@ -97,6 +107,21 @@ public class Environment {
         }
         if (parent != null) {
             return parent.getStruct(name);
+        }
+        return null;
+    }
+
+    public void defineInterface(InterfaceContract contract) {
+        interfaces.put(contract.getName(), contract);
+    }
+
+    public InterfaceContract getInterface(String name) {
+        InterfaceContract contract = interfaces.get(name);
+        if (contract != null) {
+            return contract;
+        }
+        if (parent != null) {
+            return parent.getInterface(name);
         }
         return null;
     }
